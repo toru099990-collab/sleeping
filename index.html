@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>睡眠ログ</title>
+<title>体調ログ</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" type="image/png" href="./icon-192.png">
@@ -14,9 +14,11 @@
 <meta name="theme-color" content="#1c2a4a">
 <style>
 :root{--bg:#f3f1ec;--sf:#fff;--ink:#222a33;--sub:#667080;--ln:#dcd8cf;--ac:#2f5d9e;--pos:#1f7a4d;--neg:#b3402f;--ac-t:#fff;
---l5:rgba(31,122,77,.24);--l4:rgba(31,122,77,.11);--l3:rgba(120,125,135,.14);--l2:rgba(179,64,47,.13);--l1:rgba(179,64,47,.27)}
+--l5:rgba(31,122,77,.24);--l4:rgba(31,122,77,.11);--l3:rgba(120,125,135,.14);--l2:rgba(179,64,47,.13);--l1:rgba(179,64,47,.27);
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--grid:#e1e0d9;--axis:#c3c2b7;--mut:#898781}
 @media (prefers-color-scheme:dark){:root{--bg:#12161c;--sf:#1b222b;--ink:#e6ebf2;--sub:#98a3b3;--ln:#2d3744;--ac:#7fa9e6;--pos:#5fcf95;--neg:#f08a78;--ac-t:#10161d;color-scheme:dark;
---l5:rgba(95,207,149,.30);--l4:rgba(95,207,149,.14);--l3:rgba(150,160,175,.16);--l2:rgba(240,138,120,.16);--l1:rgba(240,138,120,.32)}}
+--l5:rgba(95,207,149,.30);--l4:rgba(95,207,149,.14);--l3:rgba(150,160,175,.16);--l2:rgba(240,138,120,.16);--l1:rgba(240,138,120,.32);
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--grid:#2c2c2a;--axis:#383835}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg)}
@@ -34,16 +36,25 @@ textarea{min-height:96px;font-size:15px;resize:vertical}
 input[readonly]{opacity:.7}
 .row{display:flex;gap:8px;align-items:center}
 .seg{display:flex;gap:6px}
-.seg button{flex:1;font:inherit;padding:9px 0;border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:9px;cursor:pointer}
+.seg button{flex:1;font:inherit;padding:9px 4px;border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:9px;cursor:pointer}
 .seg button.on{background:var(--ac);color:var(--ac-t);border-color:var(--ac)}
+#modeseg button{font-size:14px;padding:10px 2px}
 .btn{font:inherit;width:100%;margin-top:14px;padding:12px;border:0;border-radius:11px;background:var(--ac);color:var(--ac-t);font-weight:600;cursor:pointer}
 .btn.alt{background:none;color:var(--ac);border:1px solid var(--ac)}
 .btn.danger{background:none;color:var(--neg);border:1px solid var(--neg)}
 .btn.danger.arm{background:var(--neg);color:var(--bg)}
 .sm{font:inherit;font-size:13px;border:1px solid var(--ln);background:none;color:var(--sub);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
-.score{font-size:40px;font-weight:700;text-align:center}
-.score .face{font-size:36px;margin-right:6px}
-input[type=range]{padding:0;accent-color:var(--ac)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"],.chip.on{background:var(--ac);color:var(--ac-t);border-color:var(--ac)}
+.chip.off{opacity:.5}
+.chip[data-gs][aria-pressed="true"]{background:var(--bg);color:var(--ink);border-color:var(--ink)}
+.srow{padding:10px 0;border-bottom:1px solid var(--ln)}
+.srow:last-of-type{border-bottom:0}
+input[type=range]{padding:0;accent-color:var(--ac);margin-top:6px}
+input[type=range].unset{opacity:.4}
+.total{background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:6px}
+.total span{font-size:20px;font-weight:700}
 .bar{position:relative;height:10px;background:var(--bg);border-radius:5px;margin:6px 0}
 .bar:before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--sub)}
 .bar i{position:absolute;top:0;bottom:0;border-radius:5px}
@@ -54,7 +65,8 @@ input[type=range]{padding:0;accent-color:var(--ac)}
 .note{margin-top:6px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.on{opacity:1}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+p{margin:0 0 8px}
 /* calendar */
 .calhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .calhd b{font-size:17px}
@@ -68,18 +80,44 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .day.l5{background:var(--l5)}.day.l4{background:var(--l4)}.day.l3{background:var(--l3)}.day.l2{background:var(--l2)}.day.l1{background:var(--l1)}
 .day.today{border:2px solid var(--ac)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--sub);margin-top:10px}
+/* graph */
+.gsvg{display:block;width:100%;height:auto;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.gsvg text{fill:var(--mut);font-size:10px;font-family:inherit}
+.gsvg .gl{stroke:var(--grid);stroke-width:1}
+.gsvg .ax{stroke:var(--axis);stroke-width:1}
+.gsvg .cx{stroke:var(--sub);stroke-width:1}
+.gsvg .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.gsvg .mk{stroke:var(--sf);stroke-width:2}
+.c1{stroke:var(--s1);fill:var(--s1)}.c2{stroke:var(--s2);fill:var(--s2)}.c3{stroke:var(--s3);fill:var(--s3)}.c4{stroke:var(--s4);fill:var(--s4)}
+.gsvg .ln.c1,.gsvg .ln.c2,.gsvg .ln.c3,.gsvg .ln.c4{fill:none}
+.gsvg .mk.c1,.gsvg .mk.c2,.gsvg .mk.c3,.gsvg .mk.c4{stroke:var(--sf)}
+.key{display:inline-block;vertical-align:middle}
+.key.c1{background:var(--s1)}.key.c2{background:var(--s2)}.key.c3{background:var(--s3)}.key.c4{background:var(--s4)}
+.key{width:16px;height:3px;border-radius:2px}
+.rd{margin-top:8px;font-size:13.5px}
+.rd .vals{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px}
+.rd .vals span{white-space:nowrap}
+.rd .vals b{font-size:16px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--ln)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--sub);font-weight:500}
+summary{cursor:pointer;color:var(--ac);font-size:14px;margin-top:10px}
+details label.ck{display:flex;gap:8px;align-items:center;margin:4px 0;font-size:14px;color:var(--ink)}
+details label.ck input{width:auto}
+.sumtxt p{font-size:14.5px}
 </style>
 </head>
 <body>
 <main>
-  <h1>睡眠ログ</h1>
+  <h1>体調ログ</h1>
   <div class="st" id="st"></div>
   <nav id="nav"></nav>
   <div id="view"></div>
 </main>
 <div class="toast" id="toast"></div>
 <script>
-const KEY="sleep-v1";
+const KEY="sleep-v1",MODEKEY="sleep-mode";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const SEASONS=["早春","春","初夏","梅雨","真夏","初秋","秋","晩秋","冬","真冬"];
@@ -104,60 +142,97 @@ const LEVELS=[
  {min:20,c:"l2",e:"😞",t:"20〜39点"},
  {min:0,c:"l1",e:"😫",t:"0〜19点"}];
 const level=s=>LEVELS.find(l=>s>=l.min)||LEVELS[LEVELS.length-1];
+const SLOTS=[{k:"am",n:"朝"},{k:"noon",n:"昼"},{k:"pm",n:"夕"}];
+const TARGETS=[{k:"total",n:"総合"}].concat(SLOTS);
+const SERIES=[{k:"total",n:"総合",c:"c1",shape:"circle"},{k:"am",n:"朝",c:"c2",shape:"square"},{k:"noon",n:"昼",c:"c3",shape:"tri"},{k:"pm",n:"夕",c:"c4",shape:"diamond"}];
+const WD=["日","月","火","水","木","金","土"];
 
-let S={ver:3,factors:DEF(),entries:{}},tab="input",date=today(),draft=null,delArm=null;
-let cal={y:new Date().getFullYear(),m:new Date().getMonth()};
+/* ---------- 日付の道具 ---------- */
+const dn=d=>{const p=d.split("-").map(Number);return Date.UTC(p[0],p[1]-1,p[2])/86400000};
+const fromDn=n=>{const t=new Date(n*86400000);return t.getUTCFullYear()+"-"+String(t.getUTCMonth()+1).padStart(2,"0")+"-"+String(t.getUTCDate()).padStart(2,"0")};
+const addDays=(d,n)=>fromDn(dn(d)+n);
+const md=d=>(+d.slice(5,7))+"/"+(+d.slice(8,10));
+const wd=d=>WD[new Date(dn(d)*86400000).getUTCDay()];
+const fmtDay=d=>`${+d.slice(5,7)}月${+d.slice(8,10)}日（${wd(d)}）`;
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
-function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
+const isWeekend=d=>{const w=new Date(dn(d)*86400000).getUTCDay();return w===0||w===6};
+
+/* ---------- 状態 ---------- */
+let S={ver:4,factors:DEF(),entries:{}};
+let tab="input",mode="sc",date=today(),draft=null,delArm=null;
+let cal={y:new Date().getFullYear(),m:new Date().getMonth(),metric:"total"};
+let gr={days:30,show:{total:1,am:1,noon:1,pm:1},sel:null};
+let an={t:"total"},aiInc={};
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const clamp=x=>Math.max(0,Math.min(100,Math.round(+x||0)));
+const isNum=v=>typeof v==="number"&&isFinite(v);
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2400)}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){toast("保存に失敗しました");return false}}
-function migrate(){ // 古いバックアップや旧版の記録を、いまの形に揃える
+const hasF=id=>S.factors.some(f=>f.id===id);
+const splitList=s=>String(s).split(/[,、，\n]/).map(x=>x.trim()).filter(Boolean);
+const kwHit=(note,kw)=>!!note&&(kw||[]).some(w=>w&&note.includes(w));
+const noteAll=e=>((e.noteF||"")+"\n"+(e.noteS||"")).trim();
+function parseSteps(t){const m=String(t).replace(/,/g,"").match(/\d+(\.\d+)?/);return m?Math.round(parseFloat(m[0])):null}
+function absH(t,rh){return Math.round(216.7*(rh/100*6.112*Math.exp(17.62*t/(243.12+t)))/(273.15+t)*10)/10}
+
+/* ---------- データの形を揃える（旧版の記録も引き継ぐ） ---------- */
+function migrate(){
   if(!S||typeof S!=="object")S={};
   if(!Array.isArray(S.factors))S.factors=DEF();
   if(!S.entries||typeof S.entries!=="object")S.entries={};
-  if((S.ver||0)<3){
-    if(!S.factors.some(f=>f.id==="season")){
-      const i=S.factors.findIndex(f=>f.id==="ah");
-      S.factors.splice(i>=0?i+1:S.factors.length,0,SEASON());
-    }
-    S.ver=3;
+  if((S.ver||0)<3&&!S.factors.some(f=>f.id==="season")){
+    const i=S.factors.findIndex(f=>f.id==="ah");
+    S.factors.splice(i>=0?i+1:S.factors.length,0,SEASON());
   }
+  if((S.ver||0)<4){
+    Object.keys(S.entries).forEach(d=>{const e=S.entries[d];
+      if(isNum(e.score)){e.legacy=e.score;delete e.score}   // 旧「睡眠スコア」は参考として残す
+      if(e.note!==undefined){e.noteF=e.note;delete e.note}
+    });
+  }
+  S.ver=4;
+  Object.keys(S.entries).forEach(d=>{const e=S.entries[d];if(!e.v)e.v={};if(!e.sc)e.sc={}});
 }
-function absH(t,rh){return Math.round(216.7*(rh/100*6.112*Math.exp(17.62*t/(243.12+t)))/(273.15+t)*10)/10}
-function isWeekend(d){const w=new Date(d+"T00:00:00").getDay();return w===0||w===6}
-const hasF=id=>S.factors.some(f=>f.id===id);
-const kwHit=(note,kw)=>!!note&&(kw||[]).some(w=>w&&note.includes(w));
+/* ---------- スコア ---------- */
+const totalOf=sc=>{const a=SLOTS.map(s=>sc&&sc[s.k]).filter(isNum);return a.length?Math.round(mean(a)):undefined};
+const scoreOf=(e,k)=>k==="total"?totalOf(e.sc):(e.sc&&isNum(e.sc[k])?e.sc[k]:undefined);
+const hasScore=e=>totalOf(e.sc)!==undefined;
+const hasFac=e=>Object.keys(e.v||{}).length>0||!!e.noteF;
+const isEmptyEntry=e=>!hasFac(e)&&!hasScore(e)&&!e.noteS&&!isNum(e.legacy);
+const scLabel=v=>v===undefined?"未入力":`${level(v).e} ${v}点`;
+function ent(d){return S.entries[d]||(S.entries[d]={v:{},sc:{},noteF:"",noteS:""})}
+function prune(d){const e=S.entries[d];if(e&&isEmptyEntry(e))delete S.entries[d]}
+const defDate=()=>mode==="fac"?addDays(today(),1):today();
 function entryDraft(){
   const e=S.entries[date];
-  draft=e?{score:e.score,v:{...e.v},note:e.note||""}:{score:70,v:{},note:""};
-  if(!e&&hasF("holiday"))draft.v.holiday=isWeekend(date)?1:0;
+  draft={v:{...(e&&e.v)},sc:{...(e&&e.sc)},noteF:(e&&e.noteF)||"",noteS:(e&&e.noteS)||""};
+  if(hasF("holiday")&&draft.v.holiday===undefined)draft.v.holiday=isWeekend(date)?1:0;
   if(hasF("season")&&draft.v.season===undefined)draft.v.season=seasonOf(date);
 }
 // 要因の値を取り出す（季節・キーワードは日付や備考から自動で決まる）
 function getVal(f,e,d){
-  if(f.auto==="kw")return kwHit(e.note,f.kw)?1:0;
+  if(f.auto==="kw")return kwHit(noteAll(e),f.kw)?1:0;
   if(f.auto==="season")return e.v.season!==undefined?e.v.season:seasonOf(d);
   return e.v[f.id];
 }
-function parseSteps(t){const m=String(t).replace(/,/g,"").match(/\d+(\.\d+)?/);return m?Math.round(parseFloat(m[0])):null}
-const splitList=s=>String(s).split(/[,、，\n]/).map(x=>x.trim()).filter(Boolean);
 
 /* ---------- nav ---------- */
-const TABS=[["input","入力"],["calendar","カレンダー"],["analysis","分析"],["history","履歴"],["factors","要因"],["data","設定"]];
+const TABS=[["input","入力"],["calendar","カレンダー"],["graph","グラフ"],["analysis","分析"],["history","履歴"],["factors","要因設定"],["data","設定"]];
 function renderNav(){
   $("#nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${l}</button>`).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;delArm=null;if(tab==="input")entryDraft();render()});
 }
-/* ---------- input ---------- */
-function viewInput(){
-  const lv=level(draft.score);
-  let h=`<div class="card"><label for="dt">日付</label><input type="date" id="dt" value="${date}">
-  <label for="sc">睡眠スコア（0〜100）</label><div class="score"><span class="face" id="face">${lv.e}</span><span id="scv">${draft.score}</span></div>
-  <input type="range" id="sc" min="0" max="100" value="${draft.score}">
-  <input type="number" id="scn" inputmode="numeric" min="0" max="100" value="${draft.score}" style="margin-top:8px"></div><div class="card">`;
+
+/* ---------- 入力 ---------- */
+function modeSeg(){return `<div class="seg" id="modeseg"><button data-m="fac" class="${mode==="fac"?"on":""}">要因（前日の夜）</button><button data-m="sc" class="${mode==="sc"?"on":""}">スコア（その日の夜）</button></div>`}
+function viewFac(){
+  const e=S.entries[date],saved=e&&hasFac(e);
+  let h=`<div class="card">${modeSeg()}<label for="dt">体調を測る日（スコアを付ける日）</label><input type="date" id="dt" value="${date}">
+  <div class="small" style="margin-top:6px">${fmtDay(date)}の体調に効きそうな要因を、前日の夜に入力します。</div></div><div class="card">`;
   S.factors.forEach(x=>{
     const v=draft.v[x.id];
     if(x.auto==="kw"){
-      h+=`<label>${esc(x.name)}（備考から自動判定）</label><div class="kwv" data-kw="${x.id}">${kwHit(draft.note,x.kw)?"あり":"なし"}</div>`;
+      h+=`<label>${esc(x.name)}（備考から自動判定）</label><div class="kwv" data-kw="${x.id}">${kwHit(noteAll({noteF:draft.noteF,noteS:draft.noteS}),x.kw)?"あり":"なし"}</div>`;
     }else if(x.type==="bool"){
       h+=`<label>${esc(x.name)}</label><div class="seg" data-b="${x.id}"><button data-v="1" class="${v===1?"on":""}">あり</button><button data-v="0" class="${v===0||v===undefined?"on":""}">なし</button></div>`;
     }else if(x.type==="choice"){
@@ -168,16 +243,38 @@ function viewInput(){
       <div class="row"><input id="f_${x.id}" data-n="${x.id}" type="number" step="any" inputmode="decimal" value="${v??""}" ${x.computed?"readonly":""}>${x.id==="steps"?`<button class="sm" id="paste">貼り付け</button>`:""}</div>`;
     }
   });
-  h+=`<label for="note">備考（自由に書けます）</label><textarea id="note" placeholder="例：会社で嫌なことがあった／寝るのが遅くなった">${esc(draft.note)}</textarea>
-  <button class="btn" id="save">この日を保存</button>
-  <button class="btn danger${delArm==="day:"+date?" arm":""}" id="clr">${S.entries[date]?(delArm==="day:"+date?"本当にこの日の記録を削除する":"この日の記録を削除"):"入力をすべてリセット"}</button></div>`;
-  if(S.entries[date])h+=`<div class="small">この日は保存済みです。保存し直すと上書きされます。</div>`;
+  h+=`<label for="noteF">前日の備考（その日の体調に効きそうな出来事）</label><textarea id="noteF" placeholder="例：寝るのが遅くなった／会社で嫌なことがあった">${esc(draft.noteF)}</textarea>
+  <button class="btn" id="save">要因を保存</button>
+  <button class="btn danger${delArm==="fac:"+date?" arm":""}" id="clr">${saved?(delArm==="fac:"+date?"本当にこの日の要因を削除する":"この日の要因を削除"):"要因の入力をリセット"}</button></div>`;
+  if(saved)h+=`<div class="small">この日の要因は保存済みです。保存し直すと上書きされます。</div>`;
   return h;
 }
+function viewSc(){
+  const e=S.entries[date],saved=e&&(hasScore(e)||e.noteS);
+  const t=totalOf(draft.sc);
+  let h=`<div class="card">${modeSeg()}<label for="dt">スコアを付ける日</label><input type="date" id="dt" value="${date}">
+  <div class="small" style="margin-top:6px">${fmtDay(date)}の体調を、朝・昼・夕に分けて0〜100点で入力します。入力した分から、総合を自動で計算します。</div></div><div class="card">`;
+  h+=SLOTS.map(s=>{const v=draft.sc[s.k];
+    return `<div class="srow"><div class="hd"><b>${s.n}</b><span id="sv_${s.k}">${scLabel(v)}</span></div>
+    <input type="range" class="${v===undefined?"unset":""}" data-sr="${s.k}" min="0" max="100" value="${v===undefined?50:v}" aria-label="${s.n}の体調スコア">
+    <div class="row" style="margin-top:6px"><input type="number" data-sn="${s.k}" inputmode="numeric" min="0" max="100" placeholder="未入力" value="${v===undefined?"":v}" aria-label="${s.n}の点数"><button class="sm" data-sx="${s.k}">クリア</button></div></div>`}).join("");
+  h+=`<div class="total hd"><b>総合（自動）</b><span id="tot">${t===undefined?"–":level(t).e+" "+t+"点"}</span></div>
+  <label for="noteS">その日の備考（出来事・気づいたこと）</label><textarea id="noteS" placeholder="例：昼に頭痛があった／夕方は眠くてだるかった">${esc(draft.noteS)}</textarea>
+  <button class="btn" id="save">スコアを保存</button>
+  <button class="btn danger${delArm==="sc:"+date?" arm":""}" id="clr">${saved?(delArm==="sc:"+date?"本当にこの日のスコアを削除する":"この日のスコアを削除"):"スコアの入力をリセット"}</button></div>`;
+  if(saved)h+=`<div class="small">この日のスコアは保存済みです。保存し直すと上書きされます。</div>`;
+  return h;
+}
+const viewInput=()=>mode==="fac"?viewFac():viewSc();
 function bindInput(){
-  $("#dt").onchange=e=>{date=e.target.value||today();delArm=null;entryDraft();render()};
-  const sync=v=>{v=Math.max(0,Math.min(100,Math.round(+v||0)));draft.score=v;$("#scv").textContent=v;$("#face").textContent=level(v).e;$("#sc").value=v;$("#scn").value=v};
-  $("#sc").oninput=e=>sync(e.target.value);$("#scn").oninput=e=>sync(e.target.value);
+  $("#modeseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    mode=b.dataset.m;try{localStorage.setItem(MODEKEY,mode)}catch(e){}
+    date=defDate();delArm=null;entryDraft();render();
+  });
+  $("#dt").onchange=e=>{date=e.target.value||defDate();delArm=null;entryDraft();render()};
+  if(mode==="fac")bindFac();else bindSc();
+}
+function bindFac(){
   document.querySelectorAll("[data-b]").forEach(g=>g.querySelectorAll("button").forEach(b=>b.onclick=()=>{
     draft.v[g.dataset.b]=+b.dataset.v;g.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}));
   document.querySelectorAll("[data-s]").forEach(s=>s.onchange=()=>{if(s.value)draft.v[s.dataset.s]=s.value;else delete draft.v[s.dataset.s]});
@@ -188,9 +285,9 @@ function bindInput(){
       const t=draft.v.tempIn,r=draft.v.rhIn,a=$("#f_ah");
       if(t!==undefined&&r!==undefined){draft.v.ah=absH(t,r);a.value=draft.v.ah}else{delete draft.v.ah;a.value=""}
     }});
-  $("#note").oninput=e=>{
-    draft.note=e.target.value;
-    document.querySelectorAll("[data-kw]").forEach(el=>{const f=S.factors.find(x=>x.id===el.dataset.kw);el.textContent=f&&kwHit(draft.note,f.kw)?"あり":"なし"});
+  $("#noteF").oninput=e=>{
+    draft.noteF=e.target.value;
+    document.querySelectorAll("[data-kw]").forEach(el=>{const f=S.factors.find(x=>x.id===el.dataset.kw);el.textContent=f&&kwHit(noteAll({noteF:draft.noteF,noteS:draft.noteS}),f.kw)?"あり":"なし"});
   };
   const p=$("#paste");
   if(p)p.onclick=async()=>{
@@ -201,145 +298,361 @@ function bindInput(){
     }catch(e){toast("貼り付けできませんでした。手入力してください")}
   };
   $("#save").onclick=()=>{
-    S.entries[date]={score:draft.score,v:{...draft.v},note:draft.note.trim()};
-    delArm=null;
-    if(persist()){toast("保存しました");render()}
+    const e=ent(date),v={...draft.v};
+    S.factors.forEach(f=>{if(f.type==="bool"&&!f.auto&&v[f.id]===undefined)v[f.id]=0}); // 画面の「なし」を記録として残す
+    e.v=v;e.noteF=draft.noteF.trim();delArm=null;prune(date);
+    if(persist()){toast("要因を保存しました");entryDraft();render()}
   };
   $("#clr").onclick=()=>{
-    if(!S.entries[date]){delArm=null;entryDraft();toast("入力をリセットしました");render();return}
-    if(delArm!=="day:"+date){delArm="day:"+date;render();return}
-    delete S.entries[date];delArm=null;persist();entryDraft();toast("この日の記録を削除しました");render();
+    const e=S.entries[date];
+    if(!(e&&hasFac(e))){delArm=null;entryDraft();toast("入力をリセットしました");render();return}
+    if(delArm!=="fac:"+date){delArm="fac:"+date;render();return}
+    e.v={};e.noteF="";delArm=null;prune(date);persist();entryDraft();toast("この日の要因を削除しました");render();
   };
 }
-/* ---------- calendar ---------- */
+function bindSc(){
+  const upd=(k,src)=>{
+    const v=draft.sc[k];$("#sv_"+k).textContent=scLabel(v);
+    const r=document.querySelector(`[data-sr="${k}"]`),n=document.querySelector(`[data-sn="${k}"]`);
+    r.classList.toggle("unset",v===undefined);if(v!==undefined&&src!=="r")r.value=v;if(src!=="n")n.value=v===undefined?"":v;
+    const t=totalOf(draft.sc);$("#tot").textContent=t===undefined?"–":level(t).e+" "+t+"点";
+  };
+  document.querySelectorAll("[data-sr]").forEach(r=>r.oninput=()=>{const k=r.dataset.sr;draft.sc[k]=clamp(r.value);upd(k,"r")});
+  document.querySelectorAll("[data-sn]").forEach(n=>n.oninput=()=>{const k=n.dataset.sn;if(n.value==="")delete draft.sc[k];else draft.sc[k]=clamp(n.value);upd(k,"n")});
+  document.querySelectorAll("[data-sx]").forEach(b=>b.onclick=()=>{const k=b.dataset.sx;delete draft.sc[k];upd(k)});
+  $("#noteS").oninput=e=>{draft.noteS=e.target.value};
+  $("#save").onclick=()=>{
+    const e=ent(date);e.sc={};SLOTS.forEach(s=>{if(isNum(draft.sc[s.k]))e.sc[s.k]=draft.sc[s.k]});
+    e.noteS=draft.noteS.trim();delArm=null;prune(date);
+    if(persist()){toast("スコアを保存しました");entryDraft();render()}
+  };
+  $("#clr").onclick=()=>{
+    const e=S.entries[date];
+    if(!(e&&(hasScore(e)||e.noteS))){delArm=null;entryDraft();toast("入力をリセットしました");render();return}
+    if(delArm!=="sc:"+date){delArm="sc:"+date;render();return}
+    e.sc={};e.noteS="";delArm=null;prune(date);persist();entryDraft();toast("この日のスコアを削除しました");render();
+  };
+}
+
+/* ---------- カレンダー ---------- */
 function viewCalendar(){
-  const {y,m}=cal,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),t=today();
+  const {y,m,metric}=cal,first=new Date(Date.UTC(y,m,1)).getUTCDay(),days=new Date(Date.UTC(y,m+1,0)).getUTCDate(),t=today();
   let cells="",sum=0,cnt=0;
   for(let i=0;i<first;i++)cells+="<div></div>";
   for(let d=1;d<=days;d++){
-    const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,e=S.entries[ds],L=e?level(e.score):null;
-    if(e){sum+=e.score;cnt++}
-    cells+=`<button class="day ${L?L.c:""}${ds===t?" today":""}" data-d="${ds}" aria-label="${m+1}月${d}日 ${e?"スコア"+e.score+"点":"記録なし"}"><span class="dn">${d}</span><span class="fc">${L?L.e:""}</span><span class="ds">${e?e.score:""}</span></button>`;
+    const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,e=S.entries[ds],v=e?scoreOf(e,metric):undefined,L=v!==undefined?level(v):null;
+    if(v!==undefined){sum+=v;cnt++}
+    const mark=!L&&e&&hasFac(e)?"・":"";
+    cells+=`<button class="day ${L?L.c:""}${ds===t?" today":""}" data-d="${ds}" aria-label="${m+1}月${d}日 ${v!==undefined?TARGETS.find(x=>x.k===metric).n+v+"点":mark?"要因のみ入力済み":"記録なし"}"><span class="dn">${d}</span><span class="fc">${L?L.e:mark}</span><span class="ds">${v!==undefined?v:""}</span></button>`;
   }
-  const dow=["日","月","火","水","木","金","土"].map((w,i)=>`<div class="${i===0?"sun":i===6?"sat":""}">${w}</div>`).join("");
-  return `<div class="card"><div class="calhd"><button class="sm" id="cprev" aria-label="前の月">◀</button><b>${y}年${m+1}月</b><button class="sm" id="cnext" aria-label="次の月">▶</button></div>
+  const dow=WD.map((w,i)=>`<div class="${i===0?"sun":i===6?"sat":""}">${w}</div>`).join("");
+  return `<div class="card"><div class="chips" role="group" aria-label="表示する点数">${TARGETS.map(x=>`<button class="chip${metric===x.k?" on":""}" data-cm="${x.k}">${x.n}</button>`).join("")}</div>
+  <div class="calhd"><button class="sm" id="cprev" aria-label="前の月">◀</button><b>${y}年${m+1}月</b><button class="sm" id="cnext" aria-label="次の月">▶</button></div>
   <div class="dow">${dow}</div><div class="grid">${cells}</div>
-  <div class="legend">${LEVELS.map(l=>`<span>${l.e} ${l.t}</span>`).join("")}</div></div>
-  <div class="card"><div class="hd"><b>この月の平均</b><span>${cnt?(sum/cnt).toFixed(1)+"点":"–"}（${cnt}日）</span></div>
+  <div class="legend">${LEVELS.map(l=>`<span>${l.e} ${l.t}</span>`).join("")}<span>・ 要因のみ入力済み</span></div></div>
+  <div class="card"><div class="hd"><b>この月の${TARGETS.find(x=>x.k===metric).n}の平均</b><span>${cnt?(sum/cnt).toFixed(1)+"点":"–"}（${cnt}日）</span></div>
   <div class="row" style="margin-top:8px"><button class="sm" id="ctoday">今月へ</button></div>
-  <div class="small" style="margin-top:6px">日付をタップすると、その日の入力画面が開きます。</div></div>`;
+  <div class="small" style="margin-top:6px">日付をタップすると、その日のスコア入力が開きます。総合は、入力された朝・昼・夕の平均です。</div></div>`;
 }
 function bindCalendar(){
   const mv=n=>{cal.m+=n;if(cal.m<0){cal.m=11;cal.y--}else if(cal.m>11){cal.m=0;cal.y++}render()};
   $("#cprev").onclick=()=>mv(-1);$("#cnext").onclick=()=>mv(1);
-  $("#ctoday").onclick=()=>{const n=new Date();cal={y:n.getFullYear(),m:n.getMonth()};render()};
-  document.querySelectorAll(".day").forEach(b=>b.onclick=()=>{date=b.dataset.d;delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
+  $("#ctoday").onclick=()=>{const n=new Date();cal.y=n.getFullYear();cal.m=n.getMonth();render()};
+  document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{cal.metric=b.dataset.cm;render()});
+  document.querySelectorAll(".day").forEach(b=>b.onclick=()=>{date=b.dataset.d;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
 }
-/* ---------- analysis ---------- */
+
+/* ---------- グラフ ---------- */
+const GW=360,GH=236,PL=30,PR=12,PT=12,PB=28;
+function mkShape(shape,x,y,cls,extra){
+  x=+x;y=+y; // 文字として渡されても、足し算が文字の連結にならないようにする
+  const c=`class="mk ${cls}"${extra||""}`;
+  if(shape==="circle")return `<circle ${c} cx="${x}" cy="${y}" r="4"/>`;
+  if(shape==="square")return `<rect ${c} x="${x-4}" y="${y-4}" width="8" height="8" rx="1"/>`;
+  if(shape==="tri")return `<polygon ${c} points="${x},${y-5} ${x+5},${y+4} ${x-5},${y+4}"/>`;
+  return `<polygon ${c} points="${x},${y-5.5} ${x+5.5},${y} ${x},${y+5.5} ${x-5.5},${y}"/>`;
+}
+function graphData(){
+  const all=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])).sort();
+  if(!all.length)return null;
+  const last=all[all.length-1],end=today()>last?today():last;
+  const start=gr.days===0?all[0]:addDays(end,-(gr.days-1));
+  const ds=all.filter(d=>d>=start&&d<=end);
+  return {all,ds,start:gr.days===0?all[0]:start,end};
+}
+function graphSvg(g){
+  const {ds,start,end}=g,s0=dn(start),span=Math.max(1,dn(end)-s0),pw=GW-PL-PR,ph=GH-PT-PB;
+  const X=d=>PL+pw*(dn(d)-s0)/span,Y=v=>PT+ph*(1-v/100);
+  let o=`<svg class="gsvg" id="gsvg" viewBox="0 0 ${GW} ${GH}" role="img" aria-label="体調スコアの推移の折れ線グラフ。${md(start)}から${md(end)}。詳しい値は下の表で確認できます。">`;
+  for(let v=0;v<=100;v+=20)o+=`<line class="${v===0?"ax":"gl"}" x1="${PL}" x2="${GW-PR}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${PL-5}" y="${Y(v)+3}" text-anchor="end">${v}</text>`;
+  const nt=Math.min(5,span+1);
+  for(let i=0;i<nt;i++){const n=Math.round(s0+span*(nt===1?0:i/(nt-1))),d=fromDn(n);o+=`<text x="${X(d)}" y="${GH-9}" text-anchor="${i===0?"start":i===nt-1?"end":"middle"}">${md(d)}</text>`}
+  const sx=gr.sel&&ds.includes(gr.sel)?X(gr.sel):-10;
+  o+=`<line class="cx" id="gcx" x1="${sx}" x2="${sx}" y1="${PT}" y2="${PT+ph}"/>`;
+  const dense=ds.length>40;
+  SERIES.forEach(s=>{
+    if(!gr.show[s.k])return;
+    const pts=ds.map(d=>{const v=scoreOf(S.entries[d],s.k);return v===undefined?null:{d,v,x:X(d),y:Y(v)}}).filter(Boolean);
+    let path="",prev=null;
+    pts.forEach(p=>{path+=(prev&&dn(p.d)-dn(prev.d)<=7?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)+" ";prev=p});
+    if(pts.length>1)o+=`<path class="ln ${s.c}" d="${path}"/>`;
+    pts.forEach((p,i)=>{if(!dense||i===pts.length-1)o+=mkShape(s.shape,p.x.toFixed(1),p.y.toFixed(1),s.c)});
+  });
+  o+=`<rect id="ghit" x="${PL}" y="0" width="${pw}" height="${GH}" fill="transparent"/></svg>`;
+  return o;
+}
+function graphReadout(g){
+  const d=gr.sel&&g.ds.includes(gr.sel)?gr.sel:null;
+  if(!d)return `<div class="small">グラフをタップすると、その日の値が表示されます。</div>`;
+  const e=S.entries[d];
+  const vals=SERIES.filter(s=>gr.show[s.k]).map(s=>{const v=scoreOf(e,s.k);return `<span><i class="key ${s.c}"></i> ${s.n} <b>${v===undefined?"–":v}</b></span>`}).join("");
+  const i=g.ds.indexOf(d);
+  return `<div class="hd"><b>${fmtDay(d)}</b><span class="row"><button class="sm" id="gprev" aria-label="前の記録日"${i<=0?" disabled":""}>◀</button><button class="sm" id="gnext" aria-label="次の記録日"${i>=g.ds.length-1?" disabled":""}>▶</button></span></div><div class="vals">${vals}</div>`;
+}
+// 選んだ日だけを更新する（グラフ本体は描き直さないので、指でなぞっても途切れない）
+function setSel(g,d){
+  gr.sel=d;
+  const s0=dn(g.start),span=Math.max(1,dn(g.end)-s0),x=PL+(GW-PL-PR)*(dn(d)-s0)/span,cx=$("#gcx");
+  if(cx){cx.setAttribute("x1",x);cx.setAttribute("x2",x)}
+  $("#grd").innerHTML=graphReadout(g);
+  const i=g.ds.indexOf(d),gp=$("#gprev"),gn=$("#gnext");
+  if(gp)gp.onclick=()=>{if(i>0)setSel(g,g.ds[i-1])};
+  if(gn)gn.onclick=()=>{if(i<g.ds.length-1)setSel(g,g.ds[i+1])};
+}
+function drawGraph(){
+  const g=graphData();if(!g||!$("#gbox"))return;
+  if(!gr.sel||!g.ds.includes(gr.sel))gr.sel=g.ds[g.ds.length-1]||null;
+  $("#gbox").innerHTML=graphSvg(g);
+  if(gr.sel)setSel(g,gr.sel);
+  const svg=$("#gsvg"),hit=$("#ghit");
+  const pick=ev=>{
+    if(!g.ds.length)return;
+    const r=svg.getBoundingClientRect(),px=(ev.clientX-r.left)/r.width*GW,s0=dn(g.start),span=Math.max(1,dn(g.end)-s0);
+    let best=g.ds[0],bd=1e9;
+    g.ds.forEach(d=>{const x=PL+(GW-PL-PR)*(dn(d)-s0)/span,dd=Math.abs(x-px);if(dd<bd){bd=dd;best=d}});
+    if(best!==gr.sel)setSel(g,best);
+  };
+  hit.addEventListener("pointerdown",pick);
+  hit.addEventListener("pointermove",ev=>{if(ev.pointerType==="mouse"||ev.buttons)pick(ev)});
+}
+function viewGraph(){
+  const g=graphData();
+  if(!g||g.all.length<2)return `<div class="card">グラフには、スコアが入った日が2日分以上必要です（現在${g?g.all.length:0}日）。「入力」の「体調スコア」から入力してください。</div>`;
+  const ranges=[[14,"14日"],[30,"30日"],[90,"90日"],[0,"すべて"]];
+  const rows=g.ds.slice().reverse().slice(0,62).map(d=>{const e=S.entries[d];return `<tr><td>${md(d)}（${wd(d)}）</td>${SERIES.map(s=>`<td>${scoreOf(e,s.k)??"–"}</td>`).join("")}</tr>`}).join("");
+  return `<div class="card"><div class="chips" role="group" aria-label="期間">${ranges.map(([n,l])=>`<button class="chip${gr.days===n?" on":""}" data-gd="${n}">${l}</button>`).join("")}</div>
+  <div class="chips" role="group" aria-label="表示する線">${SERIES.map(s=>`<button class="chip${gr.show[s.k]?"":" off"}" data-gs="${s.k}" aria-pressed="${gr.show[s.k]?"true":"false"}"><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line x1="0" x2="22" y1="6" y2="6" class="ln ${s.c}" style="stroke-width:2"/>${mkShape(s.shape,11,6,s.c)}</svg>${s.n}</button>`).join("")}</div>
+  <div id="gbox"></div><div class="rd" id="grd"></div>
+  <details><summary>表で見る</summary><table><thead><tr><th>日付</th>${SERIES.map(s=>`<th>${s.n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></details></div>
+  <div class="small">点が離れた日（7日以上の間隔）は、線をつなぎません。総合は、入力された朝・昼・夕の平均です。</div>`;
+}
+function bindGraph(){
+  document.querySelectorAll("[data-gd]").forEach(b=>b.onclick=()=>{gr.days=+b.dataset.gd;gr.sel=null;render()});
+  document.querySelectorAll("[data-gs]").forEach(b=>b.onclick=()=>{const k=b.dataset.gs,on=Object.values(gr.show).filter(Boolean).length;if(gr.show[k]&&on===1){toast("1本は表示したままにします");return}gr.show[k]=gr.show[k]?0:1;render()});
+  drawGraph();
+}
+
+/* ---------- 分析 ---------- */
 function pearson(x,y){
-  const n=x.length,mx=x.reduce((a,b)=>a+b,0)/n,my=y.reduce((a,b)=>a+b,0)/n;
+  const n=x.length,mx=mean(x),my=mean(y);
   let sxy=0,sxx=0,syy=0;for(let i=0;i<n;i++){sxy+=(x[i]-mx)*(y[i]-my);sxx+=(x[i]-mx)**2;syy+=(y[i]-my)**2}
   return sxx&&syy?sxy/Math.sqrt(sxx*syy):null;
 }
-const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
-function analyze(){
-  const ds=Object.keys(S.entries);
+function analyze(k){
+  const items=Object.keys(S.entries).map(d=>({d,e:S.entries[d],y:scoreOf(S.entries[d],k)})).filter(x=>x.y!==undefined);
   return S.factors.map(f=>{
     const rows=[];
-    ds.forEach(d=>{const e=S.entries[d],v=getVal(f,e,d);if(v!==undefined&&v!==null&&v!=="")rows.push({v,y:e.score})});
+    items.forEach(({d,e,y})=>{const v=getVal(f,e,d);if(v!==undefined&&v!==null&&v!=="")rows.push({v,y})});
     if(f.type==="choice"){
       const g={};rows.forEach(p=>{(g[p.v]=g[p.v]||[]).push(p.y)});
-      const ks=Object.keys(g),N=rows.length,k=ks.length;
+      const ks=Object.keys(g),N=rows.length,kk=ks.length;
       let r=null;
-      if(k>=2&&N>k){ // 選択肢が多いほど偶然で大きく出やすいので、その分を差し引く
+      if(kk>=2&&N>kk){ // 選択肢が多いほど偶然で大きく出やすいので、その分を差し引く
         const m=mean(rows.map(p=>p.y));let ssb=0,sst=0;
         ks.forEach(q=>{ssb+=g[q].length*(mean(g[q])-m)**2});rows.forEach(p=>{sst+=(p.y-m)**2});
-        if(sst>0){const msw=(sst-ssb)/(N-k);r=Math.sqrt(Math.max(0,(ssb-(k-1)*msw)/sst))}
+        if(sst>0){const msw=(sst-ssb)/(N-kk);r=Math.sqrt(Math.max(0,(ssb-(kk-1)*msw)/sst))}
       }
-      const note=ks.sort((a,b)=>mean(g[b])-mean(g[a])).map(q=>`${esc(q)} ${mean(g[q]).toFixed(1)}点（${g[q].length}日）`).join(" ／ ");
-      return {f,kind:"choice",r,n:N,note};
+      ks.sort((a,b)=>mean(g[b])-mean(g[a]));
+      const note=ks.map(q=>`${esc(q)} ${mean(g[q]).toFixed(1)}点（${g[q].length}日）`).join(" ／ ");
+      return {f,kind:"choice",r,n:N,note,best:ks.length?[ks[0],mean(g[ks[0]])]:null,worst:ks.length?[ks[ks.length-1],mean(g[ks[ks.length-1]])]:null};
     }
-    const pts=rows.filter(p=>typeof p.v==="number").map(p=>({x:f.type==="bool"?(p.v?1:0):p.v,y:p.y}));
+    const pts=rows.filter(p=>isNum(p.v)).map(p=>({x:f.type==="bool"?(p.v?1:0):p.v,y:p.y}));
     const r=pts.length>=3?pearson(pts.map(p=>p.x),pts.map(p=>p.y)):null;
-    let note="";
+    let note="",na=0,nb=0,diff=null;
     if(f.type==="bool"){
-      const a=pts.filter(p=>p.x===1).map(p=>p.y),b=pts.filter(p=>p.x===0).map(p=>p.y);
+      const a=pts.filter(p=>p.x===1).map(p=>p.y),b=pts.filter(p=>p.x===0).map(p=>p.y);na=a.length;nb=b.length;
       note=`あり ${a.length?mean(a).toFixed(1):"–"}点（${a.length}日） ／ なし ${b.length?mean(b).toFixed(1):"–"}点（${b.length}日）`;
-      if(a.length&&b.length){const d=mean(a)-mean(b);note+=` ／ 差 ${d>0?"+":""}${d.toFixed(1)}`}
+      if(a.length&&b.length){diff=mean(a)-mean(b);note+=` ／ 差 ${diff>0?"+":""}${diff.toFixed(1)}`}
     }else if(pts.length>=4){
       const s=[...pts].sort((p,q)=>p.x-q.x),h=Math.floor(s.length/2);
       note=`低い側 ${mean(s.slice(0,h).map(p=>p.y)).toFixed(1)}点 ／ 高い側 ${mean(s.slice(-h).map(p=>p.y)).toFixed(1)}点`;
     }
-    return {f,kind:"num",r,n:pts.length,note};
+    return {f,kind:"num",r,n:pts.length,note,na,nb,diff};
   }).filter(a=>a.n>0).sort((a,b)=>Math.abs(b.r??0)-Math.abs(a.r??0));
 }
-// 備考の文章から、よく出る言葉とスコアの関係を調べる
+const strength=r=>r===null?"–":Math.abs(r)>=.5?"強い":Math.abs(r)>=.3?"中程度":Math.abs(r)>=.1?"弱い":"ほぼなし";
+// 要約に使える（十分な記録と、はっきりした関係のある）要因だけを選ぶ
+function strong(k,limit){
+  return analyze(k).filter(a=>{
+    if(a.r===null||a.n<5||Math.abs(a.r)<0.3)return false;
+    if(a.f.type==="bool"&&!(a.na>=2&&a.nb>=2))return false;
+    if(a.kind==="choice"&&!a.best)return false;
+    return true;
+  }).slice(0,limit);
+}
+function phrase(a){
+  const f=a.f;
+  if(a.kind==="choice")return `「${f.name}」で差があり、${a.best[0]}が高め（${a.best[1].toFixed(1)}点）、${a.worst[0]}が低め（${a.worst[1].toFixed(1)}点）`;
+  if(f.type==="bool")return `「${f.name}」がある日は、ない日より平均${Math.abs(a.diff).toFixed(1)}点${a.diff>0?"高":"低"}い（あり${a.na}日／なし${a.nb}日）`;
+  return `「${f.name}」が大きい日ほどスコアが${a.r>0?"高":"低"}い傾向（相関${a.r>0?"+":""}${a.r.toFixed(2)}）`;
+}
+function short(a){
+  if(a.kind==="choice")return `${a.f.name} 影響度${a.r.toFixed(2)}`;
+  if(a.f.type==="bool")return `${a.f.name} あり${a.diff>0?"+":""}${a.diff.toFixed(1)}点`;
+  return `${a.f.name} 相関${a.r>0?"+":""}${a.r.toFixed(2)}`;
+}
+function buildSummary(){
+  const ds=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])).sort(),N=ds.length;
+  if(N<3)return ["総評は、スコアが入った日が3日分以上になると表示されます（現在"+N+"日）。"];
+  const out=[];
+  const avg=k=>{const a=ds.map(d=>scoreOf(S.entries[d],k)).filter(v=>v!==undefined);return a.length?mean(a):null};
+  const sl=SLOTS.map(s=>({n:s.n,v:avg(s.k)})).filter(x=>x.v!==null);
+  let p=`${md(ds[0])}〜${md(ds[N-1])}の${N}日分を見ています。総合スコアの平均は${avg("total").toFixed(1)}点`;
+  if(sl.length)p+=`（${sl.map(x=>x.n+" "+x.v.toFixed(1)).join("・")}）`;
+  p+="です。";
+  if(sl.length>=2){const lo=sl.reduce((a,b)=>b.v<a.v?b:a),hi=sl.reduce((a,b)=>b.v>a.v?b:a);if(hi.v-lo.v>=3)p+=`時間帯では、${lo.n}が最も低く、${hi.n}が最も高めです。`}
+  out.push(p);
+  if(N>=10){
+    const tot=ds.map(d=>scoreOf(S.entries[d],"total")),rec=tot.slice(-7),prev=tot.slice(-14,-7);
+    if(prev.length>=3){const df=mean(rec)-mean(prev);out.push(`直近${rec.length}日分の総合は平均${mean(rec).toFixed(1)}点で、その前の${prev.length}日分（${mean(prev).toFixed(1)}点）より${df>0?"+":""}${df.toFixed(1)}点、${df>=3?"上向き":df<=-3?"下向き":"ほぼ横ばい"}です。`)}
+  }
+  const t=strong("total",3);
+  if(t.length)out.push("総合スコアに関係が見られた要因：\n"+t.map(a=>"・"+phrase(a)).join("\n"));
+  else out.push("総合スコアについては、はっきりした関係のある要因は、まだ見つかっていません。");
+  SLOTS.forEach(s=>{const a=strong(s.k,1);if(a.length)out.push(`${s.n}：${phrase(a[0])}`)});
+  if(N<14)out.push(`記録がまだ${N}日分と少ないため、偶然の影響を受けやすい点にご注意ください。目安として14日分以上でご覧ください。`);
+  out.push("※統計にもとづく自動の文章です。因果関係や診断を示すものではありません。");
+  return out;
+}
+function aiPrompt(){
+  const inc=S.factors.filter(f=>aiInc[f.id]!==false),sum=buildSummary();
+  const ds=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])||hasFac(S.entries[d])).sort().slice(-60);
+  const fv=(f,e,d)=>{const v=getVal(f,e,d);if(v===undefined||v==="")return "";return f.type==="bool"?(v?"あり":"なし"):v+(f.unit||"")};
+  const lines=ds.map(d=>{const e=S.entries[d],t=scoreOf(e,"total");
+    return [d,...SLOTS.map(s=>scoreOf(e,s.k)??"-"),t??"-",...inc.map(f=>fv(f,e,d)||"-"),(e.noteF||"").replace(/\s+/g," ").slice(0,80),(e.noteS||"").replace(/\s+/g," ").slice(0,80)].join(" | ")}).join("\n");
+  return `あなたは、生活習慣と体調の関係を一緒に考えるアシスタントです。以下は、私が毎日記録している「朝・昼・夕の体調スコア（0〜100点、高いほど良い）」と、体調に影響しそうな「要因」のデータです。
+要因は前日の夜に、スコアはその日の夜に入力しています。各行は「スコアを付けた日」で、要因はその日の体調に効きそうな前日までの状態です。
+
+【お願い】
+1. 朝・昼・夕・総合のそれぞれについて、効いていそうな要因を、根拠（数字）と合わせて教えてください。
+2. 全体の傾向や、気になる点（急な低下、時間帯による差など）を教えてください。
+3. 今日から試せる、具体的な改善案を3つ提案してください。
+※診断や医療的な断定は避け、データが少ない・偏っている場合は、その旨を正直に伝えてください。
+
+【アプリによる自動集計（参考）】
+${sum.join("\n")}
+
+【記録（古い順、最大60日）】
+日付 | 朝 | 昼 | 夕 | 総合 | ${inc.map(f=>f.name).join(" | ")} | 前日の備考 | その日の備考
+${lines}`;
+}
+function viewWords(k){
+  const w=wordStats(k);
+  if(!w)return `<div class="card"><b>備考の言葉</b><div class="small" style="margin-top:4px">この端末では、備考の言葉の自動分析を使えません。「要因設定」の「備考のキーワード」をお使いください。</div></div>`;
+  let h=`<div class="card"><b>備考によく出る言葉（${TARGETS.find(x=>x.k===k).n}）</b><div class="small" style="margin-top:4px">備考を書いた日（${w.N}日）だけで比べています。3日以上に出てくる言葉が対象です。</div>`;
+  if(!w.list.length)h+=`<div class="small" style="margin-top:8px">${w.N<6?"備考を書いた日が増えると、言葉ごとの傾向を表示します。":"3日以上に出てくる言葉が、まだ十分にありません。"}</div>`;
+  else w.list.forEach(x=>{h+=`<div class="hd" style="margin-top:8px"><b>${esc(x.w)}</b><span class="${x.d>0?"pos":"neg"}">差 ${x.d>0?"+":""}${x.d.toFixed(1)}</span></div><div class="small">出た日 ${x.ma.toFixed(1)}点（${x.na}日） ／ 出ない日 ${x.mb.toFixed(1)}点</div>`});
+  return h+`</div>`;
+}
 const STOP=new Set(["する","した","して","いる","ある","こと","もの","ない","なっ","なる","これ","それ","ので","から","けど","です","ます","でし","まし","という","思う","思っ","ため","よう","あった","ありました","ました","でした","いた","った","って","ていた","ている","なった","ように","ていま","しまっ","でも","だった","たかった","だけ","まで","より","など","とても","ちょっと","少し","今日","昨日","日"]);
 function okWord(w){
   if(STOP.has(w)||/^[\d\s０-９]+$/.test(w))return false;
   if(w.length>=2)return !/^[ぁ-ん]{2}$/.test(w);
   return /[一-鿿]/.test(w);
 }
-function wordStats(){
+function wordStats(k){
   if(typeof Intl==="undefined"||!Intl.Segmenter)return null;
   const seg=new Intl.Segmenter("ja",{granularity:"word"}),rows=[];
-  Object.keys(S.entries).forEach(d=>{const e=S.entries[d];
-    if(e.note&&e.note.trim()){const set=new Set();
-      for(const s of seg.segment(e.note)){if(s.isWordLike){const w=s.segment.toLowerCase();if(okWord(w))set.add(w)}}
-      rows.push({set,y:e.score})}});
+  Object.keys(S.entries).forEach(d=>{const e=S.entries[d],y=scoreOf(e,k),txt=noteAll(e);
+    if(y!==undefined&&txt){const set=new Set();
+      for(const s of seg.segment(txt)){if(s.isWordLike){const w=s.segment.toLowerCase();if(okWord(w))set.add(w)}}
+      rows.push({set,y})}});
   const cnt={};rows.forEach(r=>r.set.forEach(w=>{cnt[w]=(cnt[w]||0)+1}));
-  const out=[];
+  const grp={};
   Object.keys(cnt).forEach(w=>{
     const a=rows.filter(r=>r.set.has(w)).map(r=>r.y),b=rows.filter(r=>!r.set.has(w)).map(r=>r.y);
-    if(a.length>=3&&b.length>=3)out.push({w,na:a.length,ma:mean(a),mb:mean(b),d:mean(a)-mean(b)});
+    if(a.length<3||b.length<3)return;
+    const key=rows.map(r=>r.set.has(w)?1:0).join(""); // 同じ日に出る言葉は、1つにまとめる
+    if(grp[key])grp[key].ws.push(w);
+    else grp[key]={ws:[w],na:a.length,ma:mean(a),mb:mean(b),d:mean(a)-mean(b)};
   });
+  const out=Object.values(grp).map(g=>({w:g.ws.slice(0,3).join("・"),na:g.na,ma:g.ma,mb:g.mb,d:g.d}));
   out.sort((p,q)=>Math.abs(q.d)-Math.abs(p.d));
   return {N:rows.length,list:out.slice(0,8)};
 }
-function viewWords(){
-  const w=wordStats();
-  if(!w)return `<div class="card"><b>備考の言葉</b><div class="small" style="margin-top:4px">この端末では、備考の言葉の自動分析を使えません。「要因」タブの「備考のキーワード」をお使いください。</div></div>`;
-  let h=`<div class="card"><b>備考によく出る言葉</b><div class="small" style="margin-top:4px">備考を書いた日（${w.N}日）だけで比べています。3日以上に出てくる言葉が対象です。</div>`;
-  if(!w.list.length)h+=`<div class="small" style="margin-top:8px">${w.N<6?"備考を書いた日が増えると、言葉ごとの傾向を表示します。":"3日以上に出てくる言葉が、まだ十分にありません。"}</div>`;
-  else w.list.forEach(x=>{h+=`<div class="hd" style="margin-top:8px"><b>${esc(x.w)}</b><span class="${x.d>0?"pos":"neg"}">差 ${x.d>0?"+":""}${x.d.toFixed(1)}</span></div><div class="small">出た日 ${x.ma.toFixed(1)}点（${x.na}日） ／ 出ない日 ${x.mb.toFixed(1)}点</div>`});
-  return h+`</div>`;
-}
 function viewAnalysis(){
-  const n=Object.keys(S.entries).length;
-  if(n<3)return `<div class="card">分析には3日分以上の記録が必要です（現在${n}日）。記録が増えるほど信頼できる結果になります。</div>`;
-  const avg=mean(Object.values(S.entries).map(e=>e.score));
-  let h=`<div class="card"><div class="hd"><b>平均スコア</b><span>${avg.toFixed(1)}点（${n}日）</span></div></div>`;
-  const label=r=>r===null?"–":Math.abs(r)>=.5?"強い":Math.abs(r)>=.3?"中程度":Math.abs(r)>=.1?"弱い":"ほぼなし";
-  analyze().forEach(a=>{
+  const n=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])).length;
+  if(n<3)return `<div class="card">分析には、スコアが入った日が3日分以上必要です（現在${n}日）。記録が増えるほど信頼できる結果になります。</div>`;
+  const sum=buildSummary();
+  let h=`<div class="card"><b>総評（自動）</b><div class="sumtxt" style="margin-top:8px">${sum.map(p=>`<p>${esc(p).replace(/\n/g,"<br>")}</p>`).join("")}</div>
+  <button class="btn" id="aicp">AIに相談する文章をコピー</button>
+  <div class="small" style="margin-top:6px">コピーした文章を、ClaudeなどのAIアプリに貼り付けると、より詳しいコメントがもらえます。このアプリの中では、AIに自動で送信していません。</div>
+  <details><summary>相談文に含める要因を選ぶ</summary><div class="small" style="margin-top:6px">チェックを外した要因は、相談文に含めません。備考の文章は、そのまま含まれます。</div>
+  ${S.factors.map(f=>`<label class="ck"><input type="checkbox" data-ai="${f.id}"${aiInc[f.id]===false?"":" checked"}>${esc(f.name)}</label>`).join("")}</details>
+  <div class="small" id="aimsg"></div></div>`;
+  h+=`<div class="card"><b>時間帯ごとの主な要因</b><div class="small" style="margin-top:4px">記録が5日分以上あり、関係がはっきり（絶対値0.3以上）した要因を、最大2つ表示します。</div>`;
+  TARGETS.forEach(t=>{const a=strong(t.k,2),c=Object.keys(S.entries).filter(d=>scoreOf(S.entries[d],t.k)!==undefined).length;
+    h+=`<div class="hd" style="margin-top:8px"><b>${t.n}</b><span class="small">${c}日分</span></div><div class="small">${a.length?a.map(x=>esc(short(x))).join(" ／ "):(c<5?"データ不足":"はっきりした要因なし")}</div>`});
+  h+=`</div><div class="chips" role="group" aria-label="くわしく見る点数">${TARGETS.map(t=>`<button class="chip${an.t===t.k?" on":""}" data-at="${t.k}">${t.n}を詳しく</button>`).join("")}</div>`;
+  const label=TARGETS.find(x=>x.k===an.t).n;
+  const list=analyze(an.t);
+  h+=`<div class="card"><div class="hd"><b>${label}スコアの平均</b><span>${(mean(Object.keys(S.entries).map(d=>scoreOf(S.entries[d],an.t)).filter(v=>v!==undefined))).toFixed(1)}点</span></div></div>`;
+  list.forEach(a=>{
     const r=a.r;
     if(a.kind==="choice"){
-      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span>${r===null?"データ不足":"影響度 "+r.toFixed(2)+"（"+label(r)+"）"}</span></div>
+      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span>${r===null?"データ不足":"影響度 "+r.toFixed(2)+"（"+strength(r)+"）"}</span></div>
       <div class="bar"><i style="background:var(--ac);left:50%;width:${r===null?0:r*50}%"></i></div>
       <div class="small">${a.note}${a.n<10?"（少数のため参考程度）":""}</div></div>`;
     }else{
       const w=r===null?0:Math.abs(r)*50;
-      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span class="${r>0?"pos":"neg"}">${r===null?"データ不足":"相関 "+(r>0?"+":"")+r.toFixed(2)+"（"+label(r)+"）"}</span></div>
+      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span class="${r>0?"pos":"neg"}">${r===null?"データ不足":"相関 "+(r>0?"+":"")+r.toFixed(2)+"（"+strength(r)+"）"}</span></div>
       <div class="bar"><i style="background:${r>0?"var(--pos)":"var(--neg)"};width:${w}%;${r>0?"left:50%":"right:50%"}"></i></div>
       <div class="small">${a.note||""}${a.note?" ／ ":""}${a.n}日分${a.n<7?"（少数のため参考程度）":""}</div></div>`;
     }
   });
-  h+=viewWords();
+  h+=viewWords(an.t);
   return h+`<div class="small">相関は、プラスなら「値が大きい（あり）ほどスコアが高い」、マイナスなら逆の関係です。選択式の「影響度」は、0〜1で、大きいほど選択肢ごとの差が大きいことを表します。いずれも因果を示すものではなく、要因同士が影響し合うこともあります。目安として14日分以上でご覧ください。</div>`;
 }
-/* ---------- history / factors / data ---------- */
+function bindAnalysis(){
+  document.querySelectorAll("[data-at]").forEach(b=>b.onclick=()=>{an.t=b.dataset.at;render()});
+  document.querySelectorAll("[data-ai]").forEach(c=>c.onchange=()=>{aiInc[c.dataset.ai]=c.checked});
+  const cp=$("#aicp");
+  if(cp)cp.onclick=async()=>{
+    const txt=aiPrompt();
+    try{await navigator.clipboard.writeText(txt);toast("コピーしました。AIアプリに貼り付けてください");$("#aimsg").textContent=`${txt.length}文字をコピーしました。`}
+    catch(e){$("#aimsg").innerHTML="コピーできませんでした。下の内容を全選択してコピーしてください。<textarea readonly>"+esc(txt)+"</textarea>"}
+  };
+}
+
+/* ---------- 履歴・要因設定・設定 ---------- */
 function viewHistory(){
   const ks=Object.keys(S.entries).sort().reverse();
   if(!ks.length)return `<div class="card">まだ記録がありません。「入力」から最初の1日を保存しましょう。</div>`;
-  return ks.map(k=>{const e=S.entries[k],L=level(e.score);
-    const parts=S.factors.map(f=>{
+  return ks.map(k=>{const e=S.entries[k],t=totalOf(e.sc);
+    const sc=SLOTS.map(s=>`${s.n} ${scoreOf(e,s.k)??"–"}`).join("　");
+    const parts=hasFac(e)?S.factors.map(f=>{
       const v=getVal(f,e,k);if(v===undefined||v===null||v==="")return "";
       if(f.auto==="kw")return v?`${esc(f.name)}：あり`:"";
       if(f.type==="bool")return `${esc(f.name)}：${v?"あり":"なし"}`;
       if(f.type==="choice")return `${esc(f.name)}：${esc(v)}`;
       return `${esc(f.name)} ${v}${esc(f.unit||"")}`;
-    }).filter(Boolean).join("　");
-    return `<div class="card"><div class="hd"><b>${k}</b><span>${L.e} <b style="font-size:20px">${e.score}</b>点</span></div><div class="small">${parts}</div>${e.note?`<div class="note">📝 ${esc(e.note)}</div>`:""}
-    <div class="row" style="margin-top:8px"><button class="sm" data-edit="${k}">編集</button><button class="sm" data-del="${k}">${delArm===k?"本当に削除":"削除"}</button></div></div>`}).join("");
+    }).filter(Boolean).join("　"):"";
+    return `<div class="card"><div class="hd"><b>${k}（${wd(k)}）</b><span>${t!==undefined?level(t).e+" <b style=\"font-size:20px\">"+t+"</b>点":"<span class=\"small\">スコア未入力</span>"}</span></div>
+    ${t!==undefined?`<div class="small">${sc}</div>`:""}
+    ${isNum(e.legacy)?`<div class="small">旧「睡眠スコア」：${e.legacy}点（旧形式の記録）</div>`:""}
+    ${parts?`<div class="small" style="margin-top:4px">要因：${parts}</div>`:""}
+    ${e.noteF?`<div class="note">📝 前日：${esc(e.noteF)}</div>`:""}${e.noteS?`<div class="note">📝 当日：${esc(e.noteS)}</div>`:""}
+    <div class="row" style="margin-top:8px"><button class="sm" data-editf="${k}">要因を編集</button><button class="sm" data-edits="${k}">スコアを編集</button><button class="sm" data-del="${k}">${delArm===k?"本当に削除":"この日を削除"}</button></div></div>`}).join("");
 }
 function factorDesc(f){
   if(f.auto==="kw")return "備考のキーワード："+esc((f.kw||[]).join("、"));
@@ -361,6 +674,7 @@ function viewFactors(){
   return h+`<div class="small">要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります（備考のキーワードは、過去の備考にも自動で当てはまります）。名前や中身を変えたい場合は、削除して追加し直してください。</div>`;
 }
 function viewData(){
+  const nd=Object.keys(S.entries).length;
   return `<div class="card"><b>バックアップ</b>
   <div class="small" style="margin-top:4px">記録はこのiPhoneの中だけに保存されています。機種変更やアプリの削除に備えて、ときどき書き出してください。</div>
   <button class="btn" id="exp">記録をコピーして書き出す</button>
@@ -369,19 +683,17 @@ function viewData(){
   <div class="small" style="margin-top:4px">書き出した内容を貼り付けて読み込みます。いまの記録は、読み込んだ内容で置き換わります。</div>
   <label for="imp">書き出した内容</label><textarea id="imp" placeholder="ここに貼り付け"></textarea>
   <button class="btn alt" id="impb">読み込む</button></div>
-  <div class="small">登録日数：${Object.keys(S.entries).length}日／要因：${S.factors.length}個</div>`;
+  <div class="small">登録日数：${nd}日／要因：${S.factors.length}個</div>`;
 }
 function bindOthers(){
-  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{date=b.dataset.edit;delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
+  document.querySelectorAll("[data-editf]").forEach(b=>b.onclick=()=>{date=b.dataset.editf;mode="fac";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
+  document.querySelectorAll("[data-edits]").forEach(b=>b.onclick=()=>{date=b.dataset.edits;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.del){delete S.entries[delArm];delArm=null;persist();render()}else{delArm=b.dataset.del;render()}});
   document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.rm){S.factors=S.factors.filter(f=>f.id!==delArm);delArm=null;persist();render()}else{delArm=b.dataset.rm;render()}});
   const nt=$("#nt");
-  if(nt){
-    const show=()=>{["num","choice","kw"].forEach(k=>{$("#x_"+k).hidden=nt.value!==k})};
-    nt.onchange=show;show();
-  }
+  if(nt){const show=()=>{["num","choice","kw"].forEach(k=>{$("#x_"+k).hidden=nt.value!==k})};nt.onchange=show;show()}
   const add=$("#add");
   if(add)add.onclick=()=>{
     const name=$("#nn").value.trim(),type=$("#nt").value;
@@ -412,21 +724,17 @@ function render(){
   const v=$("#view");
   if(tab==="input"){if(!draft)entryDraft();v.innerHTML=viewInput();bindInput()}
   else if(tab==="calendar"){v.innerHTML=viewCalendar();bindCalendar()}
-  else{v.innerHTML=tab==="analysis"?viewAnalysis():tab==="history"?viewHistory():tab==="factors"?viewFactors():viewData();bindOthers()}
+  else if(tab==="graph"){v.innerHTML=viewGraph();if($("#gbox"))bindGraph()}
+  else if(tab==="analysis"){v.innerHTML=viewAnalysis();bindAnalysis()}
+  else{v.innerHTML=tab==="history"?viewHistory():tab==="factors"?viewFactors():viewData();bindOthers()}
 }
 /* ---------- boot ---------- */
 (function(){
   try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.factors)&&o.entries)S=o}}catch(e){}
   const before=S.ver;migrate();if(before!==S.ver)persist();
-  let note="この端末に保存中";
-  try{ // リンクに ?steps=1234&date=2026-11-05 が付いていれば歩数欄に入れる
-    const p=new URLSearchParams(location.search),n=parseSteps(p.get("steps")||"");
-    if(n!==null){const d=p.get("date");if(/^\d{4}-\d{2}-\d{2}$/.test(d||""))date=d;
-      entryDraft();draft.v.steps=n;note="歩数 "+n+" 歩を受け取りました（保存を押してください）";
-      history.replaceState(null,"",location.pathname)}
-  }catch(e){}
-  if(!draft)entryDraft();
-  $("#st").textContent=note;
+  try{const m=localStorage.getItem(MODEKEY);if(m==="fac"||m==="sc")mode=m}catch(e){}
+  date=defDate();entryDraft();
+  $("#st").textContent="この端末に保存中";
   render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
