@@ -70,7 +70,9 @@ const DEF=()=>[
  {id:"holiday",name:"休日",type:"bool"},
  {id:"alcohol",name:"飲酒",type:"bool"},
  {id:"onanie",name:"オナニー",type:"bool"}];
+const SYNC="sleep-sync",SKEY="sleep-steps";
 let S={factors:DEF(),entries:{}},tab="input",date=today(),draft=null,delArm=null;
+let sync={url:"",key:""},stepsMap={},syncMsg="",lastPull=0;
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){toast("保存に失敗しました");return false}}
@@ -80,6 +82,38 @@ function entryDraft(){
   const e=S.entries[date];
   draft=e?{score:e.score,v:{...e.v}}:{score:70,v:{}};
   if(!e&&S.factors.some(f=>f.id==="holiday"))draft.v.holiday=isWeekend(date)?1:0;
+  if(draft.v.steps===undefined&&typeof stepsMap[date]==="number"&&S.factors.some(f=>f.id==="steps"))draft.v.steps=stepsMap[date];
+}
+/* 歩数の自動取得：中継先（Googleスプレッドシート）から日ごとの歩数を読み取る */
+async function pull(manual){
+  if(!sync.url||!sync.key)return;
+  lastPull=Date.now();
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),15000);
+  const bad=m=>Object.assign(new Error(m),{custom:true});
+  try{
+    const u=new URL(sync.url);u.searchParams.set("k",sync.key);
+    const r=await fetch(u.toString(),{signal:ctl.signal,cache:"no-store"});
+    const j=await r.json();
+    if(!j||!j.ok)throw bad(j&&j.error==="unauthorized"?"合言葉が違います":"取得できませんでした");
+    stepsMap=j.data||{};
+    try{localStorage.setItem(SKEY,JSON.stringify(stepsMap))}catch(e){}
+    const has=S.factors.some(f=>f.id==="steps");
+    let filled=0;
+    if(has){
+      for(const d in S.entries){const e=S.entries[d];if(e.v.steps===undefined&&typeof stepsMap[d]==="number"){e.v.steps=stepsMap[d];filled++}}
+      if(filled)persist();
+    }
+    syncMsg=`取得しました（歩数 ${Object.keys(stepsMap).length}日分${filled?"、記録 "+filled+"日に反映":""}）`;
+    if(has&&draft&&draft.v.steps===undefined&&typeof stepsMap[date]==="number"){
+      draft.v.steps=stepsMap[date];
+      const a=document.activeElement;
+      if(tab==="input"&&!(a&&/INPUT|TEXTAREA/.test(a.tagName)))render();
+    }
+    if(manual)toast("歩数を取得しました");
+  }catch(e){
+    syncMsg=e.custom?e.message:e.name==="AbortError"?"時間内に取得できませんでした":"取得できませんでした。アドレスを確認してください";
+    if(manual)toast(syncMsg);
+  }finally{clearTimeout(t)}
 }
 function parseSteps(t){const m=String(t).replace(/,/g,"").match(/\d+(\.\d+)?/);return m?Math.round(parseFloat(m[0])):null}
 /* ---------- nav ---------- */
@@ -190,7 +224,14 @@ function viewFactors(){
   return h+`<div class="small">要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります。名前を変えたい場合は、削除して追加し直してください。</div>`;
 }
 function viewData(){
-  return `<div class="card"><b>バックアップ</b>
+  return `<div class="card"><b>歩数の自動取得</b>
+  <div class="small" style="margin-top:4px">ショートカットが送った歩数を、アプリを開いたときに取得して歩数欄に入れます。アドレスと合言葉は、この端末にだけ保存されます。</div>
+  <label for="sy">取得先のアドレス</label><input id="sy" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(sync.url)}">
+  <label for="sk">合言葉</label><input id="sk" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(sync.key)}">
+  <button class="btn" id="syb">保存して取得</button>
+  ${sync.url?`<button class="btn alt" id="syc">取得をやめる</button>`:""}
+  <div class="small" id="symsg" style="margin-top:6px">${esc(syncMsg||(sync.url?"まだ取得していません":"未設定です"))}</div></div>
+  <div class="card"><b>バックアップ</b>
   <div class="small" style="margin-top:4px">記録はこのiPhoneの中だけに保存されています。機種変更やアプリの削除に備えて、ときどき書き出してください。</div>
   <button class="btn" id="exp">記録をコピーして書き出す</button>
   <div class="small" id="expmsg" style="margin-top:6px"></div></div>
@@ -201,6 +242,17 @@ function viewData(){
   <div class="small">登録日数：${Object.keys(S.entries).length}日／要因：${S.factors.length}個</div>`;
 }
 function bindOthers(){
+  const syb=$("#syb");
+  if(syb)syb.onclick=async()=>{
+    const url=$("#sy").value.trim(),key=$("#sk").value.trim();
+    if(!/^https:\/\//.test(url)||!key){toast("アドレス（https://〜）と合言葉を入力してください");return}
+    sync={url,key};try{localStorage.setItem(SYNC,JSON.stringify(sync))}catch(e){}
+    $("#symsg").textContent="取得中…";
+    await pull(true);
+    const m=$("#symsg");if(m)m.textContent=syncMsg;
+  };
+  const syc=$("#syc");
+  if(syc)syc.onclick=()=>{sync={url:"",key:""};syncMsg="";try{localStorage.removeItem(SYNC)}catch(e){}toast("取得をやめました");render()};
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{date=b.dataset.edit;entryDraft();tab="input";render()});
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.del){delete S.entries[delArm];delArm=null;persist();render()}else{delArm=b.dataset.del;render()}});
@@ -236,6 +288,8 @@ function render(){
 /* ---------- boot ---------- */
 (function(){
   try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.factors)&&o.entries)S=o}}catch(e){}
+  try{const a=localStorage.getItem(SYNC);if(a){const o=JSON.parse(a);if(o&&o.url&&o.key)sync=o}}catch(e){}
+  try{const b=localStorage.getItem(SKEY);if(b)stepsMap=JSON.parse(b)||{}}catch(e){}
   let note="この端末に保存中";
   try{ // リンクに ?steps=1234&date=2026-11-05 が付いていれば歩数欄に入れる
     const p=new URLSearchParams(location.search),n=parseSteps(p.get("steps")||"");
@@ -247,6 +301,8 @@ function render(){
   $("#st").textContent=note;
   render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  pull();
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-lastPull>60000)pull()});
   if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 })();
 </script>
