@@ -43,6 +43,7 @@ input[readonly]{opacity:.7}
 .btn.alt{background:none;color:var(--ac);border:1px solid var(--ac)}
 .btn.danger{background:none;color:var(--neg);border:1px solid var(--neg)}
 .btn.danger.arm{background:var(--neg);color:var(--bg)}
+.sm:disabled{opacity:.35;cursor:default}
 .sm{font:inherit;font-size:13px;border:1px solid var(--ln);background:none;color:var(--sub);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .chip{font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:999px;cursor:pointer}
@@ -88,6 +89,8 @@ p{margin:0 0 8px}
 .gsvg .cx{stroke:var(--sub);stroke-width:1}
 .gsvg .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .gsvg .mk{stroke:var(--sf);stroke-width:2}
+.gsvg .mr{fill:var(--sf);stroke-width:1.75}
+.gsvg .mr.c2{stroke:var(--s2)}.gsvg .mr.c3{stroke:var(--s3)}.gsvg .mr.c4{stroke:var(--s4)}
 .c1{stroke:var(--s1);fill:var(--s1)}.c2{stroke:var(--s2);fill:var(--s2)}.c3{stroke:var(--s3);fill:var(--s3)}.c4{stroke:var(--s4);fill:var(--s4)}
 .gsvg .ln.c1,.gsvg .ln.c2,.gsvg .ln.c3,.gsvg .ln.c4{fill:none}
 .gsvg .mk.c1,.gsvg .mk.c2,.gsvg .mk.c3,.gsvg .mk.c4{stroke:var(--sf)}
@@ -144,7 +147,8 @@ const LEVELS=[
 const level=s=>LEVELS.find(l=>s>=l.min)||LEVELS[LEVELS.length-1];
 const SLOTS=[{k:"am",n:"朝"},{k:"noon",n:"昼"},{k:"pm",n:"夕"}];
 const TARGETS=[{k:"total",n:"総合"}].concat(SLOTS);
-const SERIES=[{k:"total",n:"総合",c:"c1",shape:"circle"},{k:"am",n:"朝",c:"c2",shape:"square"},{k:"noon",n:"昼",c:"c3",shape:"tri"},{k:"pm",n:"夕",c:"c4",shape:"diamond"}];
+const SERIES=[{k:"total",n:"総合",c:"c1",shape:"circle"},{k:"am",n:"朝",c:"c2",emo:"🌅"},{k:"noon",n:"昼",c:"c3",emo:"☀️"},{k:"pm",n:"夕",c:"c4",emo:"🌇"}];
+const sLabel=s=>(s.emo?s.emo+" ":"")+s.n;
 const WD=["日","月","火","水","木","金","土"];
 
 /* ---------- 日付の道具 ---------- */
@@ -224,17 +228,27 @@ function renderNav(){
 }
 
 /* ---------- 入力 ---------- */
-function modeSeg(){return `<div class="seg" id="modeseg"><button data-m="fac" class="${mode==="fac"?"on":""}">要因（前日の夜）</button><button data-m="sc" class="${mode==="sc"?"on":""}">スコア（その日の夜）</button></div>`}
+function modeSeg(){return `<div class="seg" id="modeseg"><button data-m="fac" class="${mode==="fac"?"on":""}">要因（きょうの夜）</button><button data-m="sc" class="${mode==="sc"?"on":""}">スコア（次の日の夜）</button></div>`}
+function partsOf(e,k){
+  if(!e||!hasFac(e))return "";
+  return S.factors.map(f=>{
+    const v=getVal(f,e,k);if(v===undefined||v===null||v==="")return "";
+    if(f.auto==="kw")return v?`${esc(f.name)}：あり`:"";
+    if(f.type==="bool")return `${esc(f.name)}：${v?"あり":"なし"}`;
+    if(f.type==="choice")return `${esc(f.name)}：${esc(v)}`;
+    return `${esc(f.name)} ${v}${esc(f.unit||"")}`;
+  }).filter(Boolean).join("　");
+}
 function viewFac(){
   const e=S.entries[date],saved=e&&hasFac(e);
-  let h=`<div class="card">${modeSeg()}<label for="dt">体調を測る日（スコアを付ける日）</label><input type="date" id="dt" value="${date}">
-  <div class="small" style="margin-top:6px">${fmtDay(date)}の体調に効きそうな要因を、前日の夜に入力します。</div></div><div class="card">`;
+  let h=`<div class="card">${modeSeg()}<label for="dt">きょう（要因を入力する日）</label><input type="date" id="dt" value="${addDays(date,-1)}">
+  <div class="small" style="margin-top:6px">${fmtDay(addDays(date,-1))}の状態を入力します。保存すると、次の日（${fmtDay(date)}）の体調と組にして分析します。</div></div><div class="card">`;
   S.factors.forEach(x=>{
     const v=draft.v[x.id];
     if(x.auto==="kw"){
       h+=`<label>${esc(x.name)}（備考から自動判定）</label><div class="kwv" data-kw="${x.id}">${kwHit(noteAll({noteF:draft.noteF,noteS:draft.noteS}),x.kw)?"あり":"なし"}</div>`;
     }else if(x.type==="bool"){
-      h+=`<label>${esc(x.name)}</label><div class="seg" data-b="${x.id}"><button data-v="1" class="${v===1?"on":""}">あり</button><button data-v="0" class="${v===0||v===undefined?"on":""}">なし</button></div>`;
+      h+=`<label>${esc(x.name)}${x.id==="holiday"?`（${md(date)}の体調を感じる日が休日か）`:""}</label><div class="seg" data-b="${x.id}"><button data-v="1" class="${v===1?"on":""}">あり</button><button data-v="0" class="${v===0||v===undefined?"on":""}">なし</button></div>`;
     }else if(x.type==="choice"){
       const opts=(x.opts||[]).slice();if(v&&!opts.includes(v))opts.push(v);
       h+=`<label for="f_${x.id}">${esc(x.name)}${x.auto==="season"?"（日付から自動・変更もできます）":""}</label><select id="f_${x.id}" data-s="${x.id}"><option value="">未選択</option>${opts.map(o=>`<option value="${esc(o)}"${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
@@ -243,7 +257,7 @@ function viewFac(){
       <div class="row"><input id="f_${x.id}" data-n="${x.id}" type="number" step="any" inputmode="decimal" value="${v??""}" ${x.computed?"readonly":""}>${x.id==="steps"?`<button class="sm" id="paste">貼り付け</button>`:""}</div>`;
     }
   });
-  h+=`<label for="noteF">前日の備考（その日の体調に効きそうな出来事）</label><textarea id="noteF" placeholder="例：寝るのが遅くなった／会社で嫌なことがあった">${esc(draft.noteF)}</textarea>
+  h+=`<label for="noteF">きょうの備考（次の日の体調に効きそうな出来事）</label><textarea id="noteF" placeholder="例：寝るのが遅くなった／会社で嫌なことがあった">${esc(draft.noteF)}</textarea>
   <button class="btn" id="save">要因を保存</button>
   <button class="btn danger${delArm==="fac:"+date?" arm":""}" id="clr">${saved?(delArm==="fac:"+date?"本当にこの日の要因を削除する":"この日の要因を削除"):"要因の入力をリセット"}</button></div>`;
   if(saved)h+=`<div class="small">この日の要因は保存済みです。保存し直すと上書きされます。</div>`;
@@ -252,8 +266,10 @@ function viewFac(){
 function viewSc(){
   const e=S.entries[date],saved=e&&(hasScore(e)||e.noteS);
   const t=totalOf(draft.sc);
-  let h=`<div class="card">${modeSeg()}<label for="dt">スコアを付ける日</label><input type="date" id="dt" value="${date}">
-  <div class="small" style="margin-top:6px">${fmtDay(date)}の体調を、朝・昼・夕に分けて0〜100点で入力します。入力した分から、総合を自動で計算します。</div></div><div class="card">`;
+  const pd=addDays(date,-1),pp=partsOf(S.entries[date],date),pn=(S.entries[date]||{}).noteF;
+  let h=`<div class="card">${modeSeg()}<label for="dt">体調を感じた日（きょう）</label><input type="date" id="dt" value="${date}">
+  <div class="small" style="margin-top:6px">${fmtDay(date)}の体調を、朝・昼・夕に分けて0〜100点で入力します。入力した分から、総合を自動で計算します。</div>
+  <div class="small" style="margin-top:6px">前日（${md(pd)}）の要因：${pp||"未入力"}</div>${pn?`<div class="note">📝 前日：${esc(pn)}</div>`:""}</div><div class="card">`;
   h+=SLOTS.map(s=>{const v=draft.sc[s.k];
     return `<div class="srow"><div class="hd"><b>${s.n}</b><span id="sv_${s.k}">${scLabel(v)}</span></div>
     <input type="range" class="${v===undefined?"unset":""}" data-sr="${s.k}" min="0" max="100" value="${v===undefined?50:v}" aria-label="${s.n}の体調スコア">
@@ -271,7 +287,7 @@ function bindInput(){
     mode=b.dataset.m;try{localStorage.setItem(MODEKEY,mode)}catch(e){}
     date=defDate();delArm=null;entryDraft();render();
   });
-  $("#dt").onchange=e=>{date=e.target.value||defDate();delArm=null;entryDraft();render()};
+  $("#dt").onchange=e=>{const v=e.target.value;date=v?(mode==="fac"?addDays(v,1):v):defDate();delArm=null;entryDraft();render()};
   if(mode==="fac")bindFac();else bindSc();
 }
 function bindFac(){
@@ -343,13 +359,13 @@ function viewCalendar(){
     const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,e=S.entries[ds],v=e?scoreOf(e,metric):undefined,L=v!==undefined?level(v):null;
     if(v!==undefined){sum+=v;cnt++}
     const mark=!L&&e&&hasFac(e)?"・":"";
-    cells+=`<button class="day ${L?L.c:""}${ds===t?" today":""}" data-d="${ds}" aria-label="${m+1}月${d}日 ${v!==undefined?TARGETS.find(x=>x.k===metric).n+v+"点":mark?"要因のみ入力済み":"記録なし"}"><span class="dn">${d}</span><span class="fc">${L?L.e:mark}</span><span class="ds">${v!==undefined?v:""}</span></button>`;
+    cells+=`<button class="day ${L?L.c:""}${ds===t?" today":""}" data-d="${ds}" aria-label="${m+1}月${d}日 ${v!==undefined?TARGETS.find(x=>x.k===metric).n+v+"点":mark?"前日の要因は入力済み、スコア待ち":"記録なし"}"><span class="dn">${d}</span><span class="fc">${L?L.e:mark}</span><span class="ds">${v!==undefined?v:""}</span></button>`;
   }
   const dow=WD.map((w,i)=>`<div class="${i===0?"sun":i===6?"sat":""}">${w}</div>`).join("");
   return `<div class="card"><div class="chips" role="group" aria-label="表示する点数">${TARGETS.map(x=>`<button class="chip${metric===x.k?" on":""}" data-cm="${x.k}">${x.n}</button>`).join("")}</div>
   <div class="calhd"><button class="sm" id="cprev" aria-label="前の月">◀</button><b>${y}年${m+1}月</b><button class="sm" id="cnext" aria-label="次の月">▶</button></div>
   <div class="dow">${dow}</div><div class="grid">${cells}</div>
-  <div class="legend">${LEVELS.map(l=>`<span>${l.e} ${l.t}</span>`).join("")}<span>・ 要因のみ入力済み</span></div></div>
+  <div class="legend">${LEVELS.map(l=>`<span>${l.e} ${l.t}</span>`).join("")}<span>・ 前日の要因は入力済み（スコア待ち）</span></div></div>
   <div class="card"><div class="hd"><b>この月の${TARGETS.find(x=>x.k===metric).n}の平均</b><span>${cnt?(sum/cnt).toFixed(1)+"点":"–"}（${cnt}日）</span></div>
   <div class="row" style="margin-top:8px"><button class="sm" id="ctoday">今月へ</button></div>
   <div class="small" style="margin-top:6px">日付をタップすると、その日のスコア入力が開きます。総合は、入力された朝・昼・夕の平均です。</div></div>`;
@@ -372,6 +388,14 @@ function mkShape(shape,x,y,cls,extra){
   if(shape==="tri")return `<polygon ${c} points="${x},${y-5} ${x+5},${y+4} ${x-5},${y+4}"/>`;
   return `<polygon ${c} points="${x},${y-5.5} ${x+5.5},${y} ${x},${y+5.5} ${x-5.5},${y}"/>`;
 }
+// 朝・昼・夕は絵文字、総合は丸。日数が多いときは小さく／省略する
+function mkMark(s,x,y,tier){
+  x=+x;y=+y;
+  if(!s.emo)return mkShape(s.shape,x,y,s.c);
+  const em=`<text class="em" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" style="font-size:${tier>=2?11.5:10}px">${s.emo}</text>`;
+  return tier>=2?`<circle class="mr ${s.c}" cx="${x}" cy="${y}" r="9"/>`+em:em;
+}
+const gTier=g=>{const sp=(GW-PL-PR)/Math.max(1,dn(g.end)-dn(g.start));return sp>=20?2:sp>=9?1:0};
 function graphData(){
   const all=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])).sort();
   if(!all.length)return null;
@@ -389,23 +413,23 @@ function graphSvg(g){
   for(let i=0;i<nt;i++){const n=Math.round(s0+span*(nt===1?0:i/(nt-1))),d=fromDn(n);o+=`<text x="${X(d)}" y="${GH-9}" text-anchor="${i===0?"start":i===nt-1?"end":"middle"}">${md(d)}</text>`}
   const sx=gr.sel&&ds.includes(gr.sel)?X(gr.sel):-10;
   o+=`<line class="cx" id="gcx" x1="${sx}" x2="${sx}" y1="${PT}" y2="${PT+ph}"/>`;
-  const dense=ds.length>40;
+  const tier=gTier(g);
   SERIES.forEach(s=>{
     if(!gr.show[s.k])return;
     const pts=ds.map(d=>{const v=scoreOf(S.entries[d],s.k);return v===undefined?null:{d,v,x:X(d),y:Y(v)}}).filter(Boolean);
     let path="",prev=null;
     pts.forEach(p=>{path+=(prev&&dn(p.d)-dn(prev.d)<=7?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)+" ";prev=p});
     if(pts.length>1)o+=`<path class="ln ${s.c}" d="${path}"/>`;
-    pts.forEach((p,i)=>{if(!dense||i===pts.length-1)o+=mkShape(s.shape,p.x.toFixed(1),p.y.toFixed(1),s.c)});
+    if(tier>0||!s.emo)pts.forEach(p=>{if(tier>0||p===pts[pts.length-1])o+=mkMark(s,p.x.toFixed(1),p.y.toFixed(1),tier)});
   });
-  o+=`<rect id="ghit" x="${PL}" y="0" width="${pw}" height="${GH}" fill="transparent"/></svg>`;
+  o+=`<g id="gsel"></g><rect id="ghit" x="${PL}" y="0" width="${pw}" height="${GH}" fill="transparent"/></svg>`;
   return o;
 }
 function graphReadout(g){
   const d=gr.sel&&g.ds.includes(gr.sel)?gr.sel:null;
   if(!d)return `<div class="small">グラフをタップすると、その日の値が表示されます。</div>`;
   const e=S.entries[d];
-  const vals=SERIES.filter(s=>gr.show[s.k]).map(s=>{const v=scoreOf(e,s.k);return `<span><i class="key ${s.c}"></i> ${s.n} <b>${v===undefined?"–":v}</b></span>`}).join("");
+  const vals=SERIES.filter(s=>gr.show[s.k]).map(s=>{const v=scoreOf(e,s.k);return `<span><i class="key ${s.c}"></i> ${sLabel(s)} <b>${v===undefined?"–":v}</b></span>`}).join("");
   const i=g.ds.indexOf(d);
   return `<div class="hd"><b>${fmtDay(d)}</b><span class="row"><button class="sm" id="gprev" aria-label="前の記録日"${i<=0?" disabled":""}>◀</button><button class="sm" id="gnext" aria-label="次の記録日"${i>=g.ds.length-1?" disabled":""}>▶</button></span></div><div class="vals">${vals}</div>`;
 }
@@ -414,6 +438,12 @@ function setSel(g,d){
   gr.sel=d;
   const s0=dn(g.start),span=Math.max(1,dn(g.end)-s0),x=PL+(GW-PL-PR)*(dn(d)-s0)/span,cx=$("#gcx");
   if(cx){cx.setAttribute("x1",x);cx.setAttribute("x2",x)}
+  const gs=$("#gsel");
+  if(gs){ // 件数が多くて印を省いたときだけ、選んだ日の印を出す
+    let o="";const tier=gTier(g);
+    if(tier===0)SERIES.forEach(s=>{if(!gr.show[s.k])return;const v=scoreOf(S.entries[d],s.k);if(v!==undefined)o+=mkMark(s,x.toFixed(1),(PT+(GH-PT-PB)*(1-v/100)).toFixed(1),2)});
+    gs.innerHTML=o;
+  }
   $("#grd").innerHTML=graphReadout(g);
   const i=g.ds.indexOf(d),gp=$("#gprev"),gn=$("#gnext");
   if(gp)gp.onclick=()=>{if(i>0)setSel(g,g.ds[i-1])};
@@ -441,9 +471,9 @@ function viewGraph(){
   const ranges=[[14,"14日"],[30,"30日"],[90,"90日"],[0,"すべて"]];
   const rows=g.ds.slice().reverse().slice(0,62).map(d=>{const e=S.entries[d];return `<tr><td>${md(d)}（${wd(d)}）</td>${SERIES.map(s=>`<td>${scoreOf(e,s.k)??"–"}</td>`).join("")}</tr>`}).join("");
   return `<div class="card"><div class="chips" role="group" aria-label="期間">${ranges.map(([n,l])=>`<button class="chip${gr.days===n?" on":""}" data-gd="${n}">${l}</button>`).join("")}</div>
-  <div class="chips" role="group" aria-label="表示する線">${SERIES.map(s=>`<button class="chip${gr.show[s.k]?"":" off"}" data-gs="${s.k}" aria-pressed="${gr.show[s.k]?"true":"false"}"><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line x1="0" x2="22" y1="6" y2="6" class="ln ${s.c}" style="stroke-width:2"/>${mkShape(s.shape,11,6,s.c)}</svg>${s.n}</button>`).join("")}</div>
+  <div class="chips" role="group" aria-label="表示する線">${SERIES.map(s=>`<button class="chip${gr.show[s.k]?"":" off"}" data-gs="${s.k}" aria-pressed="${gr.show[s.k]?"true":"false"}"><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line x1="0" x2="22" y1="6" y2="6" class="ln ${s.c}" style="stroke-width:2"/>${s.emo?`<text class="em" x="11" y="6" text-anchor="middle" dominant-baseline="central" style="font-size:10px">${s.emo}</text>`:mkShape(s.shape,11,6,s.c)}</svg>${s.n}</button>`).join("")}</div>
   <div id="gbox"></div><div class="rd" id="grd"></div>
-  <details><summary>表で見る</summary><table><thead><tr><th>日付</th>${SERIES.map(s=>`<th>${s.n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></details></div>
+  <details><summary>表で見る</summary><table><thead><tr><th>日付</th>${SERIES.map(s=>`<th>${sLabel(s)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></details></div>
   <div class="small">点が離れた日（7日以上の間隔）は、線をつなぎません。総合は、入力された朝・昼・夕の平均です。</div>`;
 }
 function bindGraph(){
@@ -541,7 +571,7 @@ function aiPrompt(){
   const lines=ds.map(d=>{const e=S.entries[d],t=scoreOf(e,"total");
     return [d,...SLOTS.map(s=>scoreOf(e,s.k)??"-"),t??"-",...inc.map(f=>fv(f,e,d)||"-"),(e.noteF||"").replace(/\s+/g," ").slice(0,80),(e.noteS||"").replace(/\s+/g," ").slice(0,80)].join(" | ")}).join("\n");
   return `あなたは、生活習慣と体調の関係を一緒に考えるアシスタントです。以下は、私が毎日記録している「朝・昼・夕の体調スコア（0〜100点、高いほど良い）」と、体調に影響しそうな「要因」のデータです。
-要因は前日の夜に、スコアはその日の夜に入力しています。各行は「スコアを付けた日」で、要因はその日の体調に効きそうな前日までの状態です。
+要因はきょうの夜に、スコアは次の日の夜に入力しています。各行は「体調を感じた日」で、要因はその前日の状態です（前日の要因 → その日の体調）。
 
 【お願い】
 1. 朝・昼・夕・総合のそれぞれについて、効いていそうな要因を、根拠（数字）と合わせて教えてください。
@@ -640,18 +670,12 @@ function viewHistory(){
   if(!ks.length)return `<div class="card">まだ記録がありません。「入力」から最初の1日を保存しましょう。</div>`;
   return ks.map(k=>{const e=S.entries[k],t=totalOf(e.sc);
     const sc=SLOTS.map(s=>`${s.n} ${scoreOf(e,s.k)??"–"}`).join("　");
-    const parts=hasFac(e)?S.factors.map(f=>{
-      const v=getVal(f,e,k);if(v===undefined||v===null||v==="")return "";
-      if(f.auto==="kw")return v?`${esc(f.name)}：あり`:"";
-      if(f.type==="bool")return `${esc(f.name)}：${v?"あり":"なし"}`;
-      if(f.type==="choice")return `${esc(f.name)}：${esc(v)}`;
-      return `${esc(f.name)} ${v}${esc(f.unit||"")}`;
-    }).filter(Boolean).join("　"):"";
+    const parts=partsOf(e,k);
     return `<div class="card"><div class="hd"><b>${k}（${wd(k)}）</b><span>${t!==undefined?level(t).e+" <b style=\"font-size:20px\">"+t+"</b>点":"<span class=\"small\">スコア未入力</span>"}</span></div>
     ${t!==undefined?`<div class="small">${sc}</div>`:""}
     ${isNum(e.legacy)?`<div class="small">旧「睡眠スコア」：${e.legacy}点（旧形式の記録）</div>`:""}
-    ${parts?`<div class="small" style="margin-top:4px">要因：${parts}</div>`:""}
-    ${e.noteF?`<div class="note">📝 前日：${esc(e.noteF)}</div>`:""}${e.noteS?`<div class="note">📝 当日：${esc(e.noteS)}</div>`:""}
+    ${parts?`<div class="small" style="margin-top:4px">前日の要因：${parts}</div>`:""}
+    ${e.noteF?`<div class="note">📝 前日の備考：${esc(e.noteF)}</div>`:""}${e.noteS?`<div class="note">📝 その日の備考：${esc(e.noteS)}</div>`:""}
     <div class="row" style="margin-top:8px"><button class="sm" data-editf="${k}">要因を編集</button><button class="sm" data-edits="${k}">スコアを編集</button><button class="sm" data-del="${k}">${delArm===k?"本当に削除":"この日を削除"}</button></div></div>`}).join("");
 }
 function factorDesc(f){
@@ -669,9 +693,9 @@ function viewFactors(){
   <div id="x_kw" hidden><label for="nk">キーワード（カンマ区切り）</label><input id="nk" placeholder="例：嫌,ムカ,怒,ストレス">
   <div class="small" style="margin-top:4px">備考にこの言葉が含まれる日を「あり」、含まれない日を「なし」として、自動で分析します。備考を書かなかった日は「なし」になります。</div></div>
   <button class="btn" id="add">追加</button></div>`;
-  S.factors.forEach(f=>{h+=`<div class="card"><div class="hd"><span><b>${esc(f.name)}</b> <span class="small">${factorDesc(f)}</span></span>
-  <button class="sm" data-rm="${f.id}">${delArm===f.id?"本当に削除":"削除"}</button></div></div>`});
-  return h+`<div class="small">要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります（備考のキーワードは、過去の備考にも自動で当てはまります）。名前や中身を変えたい場合は、削除して追加し直してください。</div>`;
+  S.factors.forEach((f,i)=>{h+=`<div class="card" id="fc_${f.id}"><div class="hd"><span><b>${esc(f.name)}</b> <span class="small">${factorDesc(f)}</span></span>
+  <span class="row" style="gap:6px"><button class="sm" data-up="${f.id}" aria-label="${esc(f.name)}を上へ"${i===0?" disabled":""}>▲</button><button class="sm" data-dn="${f.id}" aria-label="${esc(f.name)}を下へ"${i===S.factors.length-1?" disabled":""}>▼</button><button class="sm" data-rm="${f.id}">${delArm===f.id?"本当に削除":"削除"}</button></span></div></div>`});
+  return h+`<div class="small">▲▼で並べ替えると、入力画面の要因の順番も変わります。要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります（備考のキーワードは、過去の備考にも自動で当てはまります）。名前や中身を変えたい場合は、削除して追加し直してください。</div>`;
 }
 function viewData(){
   const nd=Object.keys(S.entries).length;
@@ -690,6 +714,11 @@ function bindOthers(){
   document.querySelectorAll("[data-edits]").forEach(b=>b.onclick=()=>{date=b.dataset.edits;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.del){delete S.entries[delArm];delArm=null;persist();render()}else{delArm=b.dataset.del;render()}});
+  const mv=(id,dir)=>{const i=S.factors.findIndex(f=>f.id===id),j=i+dir;if(i<0||j<0||j>=S.factors.length)return;
+    [S.factors[i],S.factors[j]]=[S.factors[j],S.factors[i]];delArm=null;persist();render();
+    const c=document.getElementById("fc_"+id);if(c&&c.scrollIntoView)c.scrollIntoView({block:"center"})};
+  document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>mv(b.dataset.up,-1));
+  document.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>mv(b.dataset.dn,1));
   document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.rm){S.factors=S.factors.filter(f=>f.id!==delArm);delArm=null;persist();render()}else{delArm=b.dataset.rm;render()}});
   const nt=$("#nt");
