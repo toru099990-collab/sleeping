@@ -1,6 +1,6 @@
 // 画面ファイルを端末に保存して、電波がなくても開けるようにする。
 // 内容を更新して公開し直したときは、下の VERSION の数字を上げてください。
-const VERSION = "v1";
+const VERSION = "v3";
 const CACHE = "sleeplog-" + VERSION;
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 

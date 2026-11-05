@@ -13,21 +13,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1c2a4a">
 <style>
-:root{--bg:#f3f1ec;--sf:#fff;--ink:#222a33;--sub:#667080;--ln:#dcd8cf;--ac:#2f5d9e;--pos:#1f7a4d;--neg:#b3402f;--ac-t:#fff}
-@media (prefers-color-scheme:dark){:root{--bg:#12161c;--sf:#1b222b;--ink:#e6ebf2;--sub:#98a3b3;--ln:#2d3744;--ac:#7fa9e6;--pos:#5fcf95;--neg:#f08a78;--ac-t:#10161d;color-scheme:dark}}
+:root{--bg:#f3f1ec;--sf:#fff;--ink:#222a33;--sub:#667080;--ln:#dcd8cf;--ac:#2f5d9e;--pos:#1f7a4d;--neg:#b3402f;--ac-t:#fff;
+--l5:rgba(31,122,77,.24);--l4:rgba(31,122,77,.11);--l3:rgba(120,125,135,.14);--l2:rgba(179,64,47,.13);--l1:rgba(179,64,47,.27)}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--sf:#1b222b;--ink:#e6ebf2;--sub:#98a3b3;--ln:#2d3744;--ac:#7fa9e6;--pos:#5fcf95;--neg:#f08a78;--ac-t:#10161d;color-scheme:dark;
+--l5:rgba(95,207,149,.30);--l4:rgba(95,207,149,.14);--l3:rgba(150,160,175,.16);--l2:rgba(240,138,120,.16);--l1:rgba(240,138,120,.32)}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;background:var(--bg)}
 body{color:var(--ink);font:15px/1.5 -apple-system,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;-webkit-text-size-adjust:100%}
 main{max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(40px + env(safe-area-inset-bottom,0px))}
 h1{font-size:20px;margin:0 0 2px}
 .st{font-size:12px;color:var(--sub);margin-bottom:12px}
-nav{display:flex;gap:4px;background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:14px}
-nav button{flex:1;font:inherit;font-size:14px;border:0;background:none;color:var(--sub);padding:8px 0;border-radius:9px;cursor:pointer}
+nav{display:flex;gap:3px;background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:14px}
+nav button{flex:1 1 auto;font:inherit;font-size:13px;border:0;background:none;color:var(--sub);padding:8px 2px;border-radius:9px;cursor:pointer;white-space:nowrap}
 nav button.on{background:var(--ac);color:var(--ac-t);font-weight:600}
 .card{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}
 label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
 input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:9px;padding:9px 10px;width:100%}
-textarea{min-height:120px;font-size:13px}
+textarea{min-height:96px;font-size:15px;resize:vertical}
 input[readonly]{opacity:.7}
 .row{display:flex;gap:8px;align-items:center}
 .seg{display:flex;gap:6px}
@@ -35,8 +38,11 @@ input[readonly]{opacity:.7}
 .seg button.on{background:var(--ac);color:var(--ac-t);border-color:var(--ac)}
 .btn{font:inherit;width:100%;margin-top:14px;padding:12px;border:0;border-radius:11px;background:var(--ac);color:var(--ac-t);font-weight:600;cursor:pointer}
 .btn.alt{background:none;color:var(--ac);border:1px solid var(--ac)}
+.btn.danger{background:none;color:var(--neg);border:1px solid var(--neg)}
+.btn.danger.arm{background:var(--neg);color:var(--bg)}
 .sm{font:inherit;font-size:13px;border:1px solid var(--ln);background:none;color:var(--sub);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
 .score{font-size:40px;font-weight:700;text-align:center}
+.score .face{font-size:36px;margin-right:6px}
 input[type=range]{padding:0;accent-color:var(--ac)}
 .bar{position:relative;height:10px;background:var(--bg);border-radius:5px;margin:6px 0}
 .bar:before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--sub)}
@@ -44,9 +50,24 @@ input[type=range]{padding:0;accent-color:var(--ac)}
 .small{font-size:12.5px;color:var(--sub)}
 .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .pos{color:var(--pos)}.neg{color:var(--neg)}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%}
+.kwv{font-weight:600}
+.note{margin-top:6px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.on{opacity:1}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+/* calendar */
+.calhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.calhd b{font-size:17px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{margin-bottom:4px;text-align:center;font-size:12px;color:var(--sub)}
+.dow .sun{color:var(--neg)}.dow .sat{color:var(--ac)}
+.day{font:inherit;position:relative;min-height:62px;padding:3px 2px 4px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+.day .dn{align-self:flex-start;margin-left:3px;font-size:11px;color:var(--sub);line-height:1}
+.day .fc{font-size:22px;line-height:1}
+.day .ds{font-size:11px;font-weight:600;line-height:1;min-height:11px}
+.day.l5{background:var(--l5)}.day.l4{background:var(--l4)}.day.l3{background:var(--l3)}.day.l2{background:var(--l2)}.day.l1{background:var(--l1)}
+.day.today{border:2px solid var(--ac)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--sub);margin-top:10px}
 </style>
 </head>
 <body>
@@ -61,65 +82,116 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 const KEY="sleep-v1";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const SEASONS=["早春","春","初夏","梅雨","真夏","初秋","秋","晩秋","冬","真冬"];
+// 月 → 季節（境目を変えたいときは、この表を直してください）
+const SEASON_BY_MONTH=[null,"真冬","真冬","早春","春","初夏","梅雨","真夏","真夏","初秋","秋","晩秋","冬"];
+const seasonOf=d=>SEASON_BY_MONTH[+d.slice(5,7)]||"";
+const SEASON=()=>({id:"season",name:"季節",type:"choice",opts:SEASONS.slice(),auto:"season"});
 const DEF=()=>[
  {id:"steps",name:"歩数",type:"num",unit:"歩"},
  {id:"tempOut",name:"外気温",type:"num",unit:"℃"},
  {id:"tempIn",name:"室温",type:"num",unit:"℃"},
  {id:"rhIn",name:"室内湿度",type:"num",unit:"%"},
  {id:"ah",name:"絶対湿度",type:"num",unit:"g/m³",computed:true},
+ SEASON(),
  {id:"holiday",name:"休日",type:"bool"},
  {id:"alcohol",name:"飲酒",type:"bool"},
  {id:"onanie",name:"オナニー",type:"bool"}];
-let S={factors:DEF(),entries:{}},tab="input",date=today(),draft=null,delArm=null;
+const LEVELS=[
+ {min:80,c:"l5",e:"😄",t:"80点以上"},
+ {min:60,c:"l4",e:"🙂",t:"60〜79点"},
+ {min:40,c:"l3",e:"😐",t:"40〜59点"},
+ {min:20,c:"l2",e:"😞",t:"20〜39点"},
+ {min:0,c:"l1",e:"😫",t:"0〜19点"}];
+const level=s=>LEVELS.find(l=>s>=l.min)||LEVELS[LEVELS.length-1];
+
+let S={ver:3,factors:DEF(),entries:{}},tab="input",date=today(),draft=null,delArm=null;
+let cal={y:new Date().getFullYear(),m:new Date().getMonth()};
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){toast("保存に失敗しました");return false}}
+function migrate(){ // 古いバックアップや旧版の記録を、いまの形に揃える
+  if(!S||typeof S!=="object")S={};
+  if(!Array.isArray(S.factors))S.factors=DEF();
+  if(!S.entries||typeof S.entries!=="object")S.entries={};
+  if((S.ver||0)<3){
+    if(!S.factors.some(f=>f.id==="season")){
+      const i=S.factors.findIndex(f=>f.id==="ah");
+      S.factors.splice(i>=0?i+1:S.factors.length,0,SEASON());
+    }
+    S.ver=3;
+  }
+}
 function absH(t,rh){return Math.round(216.7*(rh/100*6.112*Math.exp(17.62*t/(243.12+t)))/(273.15+t)*10)/10}
 function isWeekend(d){const w=new Date(d+"T00:00:00").getDay();return w===0||w===6}
+const hasF=id=>S.factors.some(f=>f.id===id);
+const kwHit=(note,kw)=>!!note&&(kw||[]).some(w=>w&&note.includes(w));
 function entryDraft(){
   const e=S.entries[date];
-  draft=e?{score:e.score,v:{...e.v}}:{score:70,v:{}};
-  if(!e&&S.factors.some(f=>f.id==="holiday"))draft.v.holiday=isWeekend(date)?1:0;
+  draft=e?{score:e.score,v:{...e.v},note:e.note||""}:{score:70,v:{},note:""};
+  if(!e&&hasF("holiday"))draft.v.holiday=isWeekend(date)?1:0;
+  if(hasF("season")&&draft.v.season===undefined)draft.v.season=seasonOf(date);
+}
+// 要因の値を取り出す（季節・キーワードは日付や備考から自動で決まる）
+function getVal(f,e,d){
+  if(f.auto==="kw")return kwHit(e.note,f.kw)?1:0;
+  if(f.auto==="season")return e.v.season!==undefined?e.v.season:seasonOf(d);
+  return e.v[f.id];
 }
 function parseSteps(t){const m=String(t).replace(/,/g,"").match(/\d+(\.\d+)?/);return m?Math.round(parseFloat(m[0])):null}
+const splitList=s=>String(s).split(/[,、，\n]/).map(x=>x.trim()).filter(Boolean);
+
 /* ---------- nav ---------- */
+const TABS=[["input","入力"],["calendar","カレンダー"],["analysis","分析"],["history","履歴"],["factors","要因"],["data","設定"]];
 function renderNav(){
-  const t=[["input","入力"],["analysis","分析"],["history","履歴"],["factors","要因"],["data","設定"]];
-  $("#nav").innerHTML=t.map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${l}</button>`).join("");
+  $("#nav").innerHTML=TABS.map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${l}</button>`).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;delArm=null;if(tab==="input")entryDraft();render()});
 }
 /* ---------- input ---------- */
 function viewInput(){
+  const lv=level(draft.score);
   let h=`<div class="card"><label for="dt">日付</label><input type="date" id="dt" value="${date}">
-  <label for="sc">睡眠スコア（0〜100）</label><div class="score" id="scv">${draft.score}</div>
+  <label for="sc">睡眠スコア（0〜100）</label><div class="score"><span class="face" id="face">${lv.e}</span><span id="scv">${draft.score}</span></div>
   <input type="range" id="sc" min="0" max="100" value="${draft.score}">
   <input type="number" id="scn" inputmode="numeric" min="0" max="100" value="${draft.score}" style="margin-top:8px"></div><div class="card">`;
   S.factors.forEach(x=>{
     const v=draft.v[x.id];
-    if(x.type==="bool"){
+    if(x.auto==="kw"){
+      h+=`<label>${esc(x.name)}（備考から自動判定）</label><div class="kwv" data-kw="${x.id}">${kwHit(draft.note,x.kw)?"あり":"なし"}</div>`;
+    }else if(x.type==="bool"){
       h+=`<label>${esc(x.name)}</label><div class="seg" data-b="${x.id}"><button data-v="1" class="${v===1?"on":""}">あり</button><button data-v="0" class="${v===0||v===undefined?"on":""}">なし</button></div>`;
+    }else if(x.type==="choice"){
+      const opts=(x.opts||[]).slice();if(v&&!opts.includes(v))opts.push(v);
+      h+=`<label for="f_${x.id}">${esc(x.name)}${x.auto==="season"?"（日付から自動・変更もできます）":""}</label><select id="f_${x.id}" data-s="${x.id}"><option value="">未選択</option>${opts.map(o=>`<option value="${esc(o)}"${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
     }else{
       h+=`<label for="f_${x.id}">${esc(x.name)}${x.unit?`（${esc(x.unit)}）`:""}${x.computed?" 自動計算":""}</label>
       <div class="row"><input id="f_${x.id}" data-n="${x.id}" type="number" step="any" inputmode="decimal" value="${v??""}" ${x.computed?"readonly":""}>${x.id==="steps"?`<button class="sm" id="paste">貼り付け</button>`:""}</div>`;
     }
   });
-  h+=`<button class="btn" id="save">この日を保存</button></div>`;
-  if(S.entries[date])h+=`<div class="small">この日は保存済みです。上書きされます。</div>`;
+  h+=`<label for="note">備考（自由に書けます）</label><textarea id="note" placeholder="例：会社で嫌なことがあった／寝るのが遅くなった">${esc(draft.note)}</textarea>
+  <button class="btn" id="save">この日を保存</button>
+  <button class="btn danger${delArm==="day:"+date?" arm":""}" id="clr">${S.entries[date]?(delArm==="day:"+date?"本当にこの日の記録を削除する":"この日の記録を削除"):"入力をすべてリセット"}</button></div>`;
+  if(S.entries[date])h+=`<div class="small">この日は保存済みです。保存し直すと上書きされます。</div>`;
   return h;
 }
 function bindInput(){
-  $("#dt").onchange=e=>{date=e.target.value||today();entryDraft();render()};
-  const sync=v=>{v=Math.max(0,Math.min(100,Math.round(+v||0)));draft.score=v;$("#scv").textContent=v;$("#sc").value=v;$("#scn").value=v};
+  $("#dt").onchange=e=>{date=e.target.value||today();delArm=null;entryDraft();render()};
+  const sync=v=>{v=Math.max(0,Math.min(100,Math.round(+v||0)));draft.score=v;$("#scv").textContent=v;$("#face").textContent=level(v).e;$("#sc").value=v;$("#scn").value=v};
   $("#sc").oninput=e=>sync(e.target.value);$("#scn").oninput=e=>sync(e.target.value);
   document.querySelectorAll("[data-b]").forEach(g=>g.querySelectorAll("button").forEach(b=>b.onclick=()=>{
     draft.v[g.dataset.b]=+b.dataset.v;g.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}));
+  document.querySelectorAll("[data-s]").forEach(s=>s.onchange=()=>{if(s.value)draft.v[s.dataset.s]=s.value;else delete draft.v[s.dataset.s]});
   document.querySelectorAll("[data-n]").forEach(i=>i.oninput=()=>{
     const id=i.dataset.n,val=i.value===""?undefined:parseFloat(i.value);
     if(val===undefined)delete draft.v[id];else draft.v[id]=val;
-    if((id==="tempIn"||id==="rhIn")&&S.factors.some(x=>x.id==="ah")){
+    if((id==="tempIn"||id==="rhIn")&&hasF("ah")){
       const t=draft.v.tempIn,r=draft.v.rhIn,a=$("#f_ah");
       if(t!==undefined&&r!==undefined){draft.v.ah=absH(t,r);a.value=draft.v.ah}else{delete draft.v.ah;a.value=""}
     }});
+  $("#note").oninput=e=>{
+    draft.note=e.target.value;
+    document.querySelectorAll("[data-kw]").forEach(el=>{const f=S.factors.find(x=>x.id===el.dataset.kw);el.textContent=f&&kwHit(draft.note,f.kw)?"あり":"なし"});
+  };
   const p=$("#paste");
   if(p)p.onclick=async()=>{
     try{
@@ -129,9 +201,39 @@ function bindInput(){
     }catch(e){toast("貼り付けできませんでした。手入力してください")}
   };
   $("#save").onclick=()=>{
-    S.entries[date]={score:draft.score,v:{...draft.v}};
+    S.entries[date]={score:draft.score,v:{...draft.v},note:draft.note.trim()};
+    delArm=null;
     if(persist()){toast("保存しました");render()}
   };
+  $("#clr").onclick=()=>{
+    if(!S.entries[date]){delArm=null;entryDraft();toast("入力をリセットしました");render();return}
+    if(delArm!=="day:"+date){delArm="day:"+date;render();return}
+    delete S.entries[date];delArm=null;persist();entryDraft();toast("この日の記録を削除しました");render();
+  };
+}
+/* ---------- calendar ---------- */
+function viewCalendar(){
+  const {y,m}=cal,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),t=today();
+  let cells="",sum=0,cnt=0;
+  for(let i=0;i<first;i++)cells+="<div></div>";
+  for(let d=1;d<=days;d++){
+    const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,e=S.entries[ds],L=e?level(e.score):null;
+    if(e){sum+=e.score;cnt++}
+    cells+=`<button class="day ${L?L.c:""}${ds===t?" today":""}" data-d="${ds}" aria-label="${m+1}月${d}日 ${e?"スコア"+e.score+"点":"記録なし"}"><span class="dn">${d}</span><span class="fc">${L?L.e:""}</span><span class="ds">${e?e.score:""}</span></button>`;
+  }
+  const dow=["日","月","火","水","木","金","土"].map((w,i)=>`<div class="${i===0?"sun":i===6?"sat":""}">${w}</div>`).join("");
+  return `<div class="card"><div class="calhd"><button class="sm" id="cprev" aria-label="前の月">◀</button><b>${y}年${m+1}月</b><button class="sm" id="cnext" aria-label="次の月">▶</button></div>
+  <div class="dow">${dow}</div><div class="grid">${cells}</div>
+  <div class="legend">${LEVELS.map(l=>`<span>${l.e} ${l.t}</span>`).join("")}</div></div>
+  <div class="card"><div class="hd"><b>この月の平均</b><span>${cnt?(sum/cnt).toFixed(1)+"点":"–"}（${cnt}日）</span></div>
+  <div class="row" style="margin-top:8px"><button class="sm" id="ctoday">今月へ</button></div>
+  <div class="small" style="margin-top:6px">日付をタップすると、その日の入力画面が開きます。</div></div>`;
+}
+function bindCalendar(){
+  const mv=n=>{cal.m+=n;if(cal.m<0){cal.m=11;cal.y--}else if(cal.m>11){cal.m=0;cal.y++}render()};
+  $("#cprev").onclick=()=>mv(-1);$("#cnext").onclick=()=>mv(1);
+  $("#ctoday").onclick=()=>{const n=new Date();cal={y:n.getFullYear(),m:n.getMonth()};render()};
+  document.querySelectorAll(".day").forEach(b=>b.onclick=()=>{date=b.dataset.d;delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
 }
 /* ---------- analysis ---------- */
 function pearson(x,y){
@@ -141,53 +243,122 @@ function pearson(x,y){
 }
 const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
 function analyze(){
-  const es=Object.values(S.entries);
+  const ds=Object.keys(S.entries);
   return S.factors.map(f=>{
-    const pts=es.filter(e=>typeof e.v[f.id]==="number").map(e=>({x:e.v[f.id],y:e.score}));
-    if(f.type==="bool")pts.forEach(p=>p.x=p.x?1:0);
+    const rows=[];
+    ds.forEach(d=>{const e=S.entries[d],v=getVal(f,e,d);if(v!==undefined&&v!==null&&v!=="")rows.push({v,y:e.score})});
+    if(f.type==="choice"){
+      const g={};rows.forEach(p=>{(g[p.v]=g[p.v]||[]).push(p.y)});
+      const ks=Object.keys(g),N=rows.length,k=ks.length;
+      let r=null;
+      if(k>=2&&N>k){ // 選択肢が多いほど偶然で大きく出やすいので、その分を差し引く
+        const m=mean(rows.map(p=>p.y));let ssb=0,sst=0;
+        ks.forEach(q=>{ssb+=g[q].length*(mean(g[q])-m)**2});rows.forEach(p=>{sst+=(p.y-m)**2});
+        if(sst>0){const msw=(sst-ssb)/(N-k);r=Math.sqrt(Math.max(0,(ssb-(k-1)*msw)/sst))}
+      }
+      const note=ks.sort((a,b)=>mean(g[b])-mean(g[a])).map(q=>`${esc(q)} ${mean(g[q]).toFixed(1)}点（${g[q].length}日）`).join(" ／ ");
+      return {f,kind:"choice",r,n:N,note};
+    }
+    const pts=rows.filter(p=>typeof p.v==="number").map(p=>({x:f.type==="bool"?(p.v?1:0):p.v,y:p.y}));
     const r=pts.length>=3?pearson(pts.map(p=>p.x),pts.map(p=>p.y)):null;
     let note="";
     if(f.type==="bool"){
       const a=pts.filter(p=>p.x===1).map(p=>p.y),b=pts.filter(p=>p.x===0).map(p=>p.y);
-      note=`あり ${a.length?mean(a).toFixed(1):"–"}点（${a.length}日） / なし ${b.length?mean(b).toFixed(1):"–"}点（${b.length}日）`;
-      if(a.length&&b.length){const d=mean(a)-mean(b);note+=` / 差 ${d>0?"+":""}${d.toFixed(1)}`}
+      note=`あり ${a.length?mean(a).toFixed(1):"–"}点（${a.length}日） ／ なし ${b.length?mean(b).toFixed(1):"–"}点（${b.length}日）`;
+      if(a.length&&b.length){const d=mean(a)-mean(b);note+=` ／ 差 ${d>0?"+":""}${d.toFixed(1)}`}
     }else if(pts.length>=4){
       const s=[...pts].sort((p,q)=>p.x-q.x),h=Math.floor(s.length/2);
-      note=`低い側 ${mean(s.slice(0,h).map(p=>p.y)).toFixed(1)}点 / 高い側 ${mean(s.slice(-h).map(p=>p.y)).toFixed(1)}点`;
+      note=`低い側 ${mean(s.slice(0,h).map(p=>p.y)).toFixed(1)}点 ／ 高い側 ${mean(s.slice(-h).map(p=>p.y)).toFixed(1)}点`;
     }
-    return {f,r,n:pts.length,note};
+    return {f,kind:"num",r,n:pts.length,note};
   }).filter(a=>a.n>0).sort((a,b)=>Math.abs(b.r??0)-Math.abs(a.r??0));
+}
+// 備考の文章から、よく出る言葉とスコアの関係を調べる
+const STOP=new Set(["する","した","して","いる","ある","こと","もの","ない","なっ","なる","これ","それ","ので","から","けど","です","ます","でし","まし","という","思う","思っ","ため","よう","あった","ありました","ました","でした","いた","った","って","ていた","ている","なった","ように","ていま","しまっ","でも","だった","たかった","だけ","まで","より","など","とても","ちょっと","少し","今日","昨日","日"]);
+function okWord(w){
+  if(STOP.has(w)||/^[\d\s０-９]+$/.test(w))return false;
+  if(w.length>=2)return !/^[ぁ-ん]{2}$/.test(w);
+  return /[一-鿿]/.test(w);
+}
+function wordStats(){
+  if(typeof Intl==="undefined"||!Intl.Segmenter)return null;
+  const seg=new Intl.Segmenter("ja",{granularity:"word"}),rows=[];
+  Object.keys(S.entries).forEach(d=>{const e=S.entries[d];
+    if(e.note&&e.note.trim()){const set=new Set();
+      for(const s of seg.segment(e.note)){if(s.isWordLike){const w=s.segment.toLowerCase();if(okWord(w))set.add(w)}}
+      rows.push({set,y:e.score})}});
+  const cnt={};rows.forEach(r=>r.set.forEach(w=>{cnt[w]=(cnt[w]||0)+1}));
+  const out=[];
+  Object.keys(cnt).forEach(w=>{
+    const a=rows.filter(r=>r.set.has(w)).map(r=>r.y),b=rows.filter(r=>!r.set.has(w)).map(r=>r.y);
+    if(a.length>=3&&b.length>=3)out.push({w,na:a.length,ma:mean(a),mb:mean(b),d:mean(a)-mean(b)});
+  });
+  out.sort((p,q)=>Math.abs(q.d)-Math.abs(p.d));
+  return {N:rows.length,list:out.slice(0,8)};
+}
+function viewWords(){
+  const w=wordStats();
+  if(!w)return `<div class="card"><b>備考の言葉</b><div class="small" style="margin-top:4px">この端末では、備考の言葉の自動分析を使えません。「要因」タブの「備考のキーワード」をお使いください。</div></div>`;
+  let h=`<div class="card"><b>備考によく出る言葉</b><div class="small" style="margin-top:4px">備考を書いた日（${w.N}日）だけで比べています。3日以上に出てくる言葉が対象です。</div>`;
+  if(!w.list.length)h+=`<div class="small" style="margin-top:8px">${w.N<6?"備考を書いた日が増えると、言葉ごとの傾向を表示します。":"3日以上に出てくる言葉が、まだ十分にありません。"}</div>`;
+  else w.list.forEach(x=>{h+=`<div class="hd" style="margin-top:8px"><b>${esc(x.w)}</b><span class="${x.d>0?"pos":"neg"}">差 ${x.d>0?"+":""}${x.d.toFixed(1)}</span></div><div class="small">出た日 ${x.ma.toFixed(1)}点（${x.na}日） ／ 出ない日 ${x.mb.toFixed(1)}点</div>`});
+  return h+`</div>`;
 }
 function viewAnalysis(){
   const n=Object.keys(S.entries).length;
   if(n<3)return `<div class="card">分析には3日分以上の記録が必要です（現在${n}日）。記録が増えるほど信頼できる結果になります。</div>`;
   const avg=mean(Object.values(S.entries).map(e=>e.score));
   let h=`<div class="card"><div class="hd"><b>平均スコア</b><span>${avg.toFixed(1)}点（${n}日）</span></div></div>`;
+  const label=r=>r===null?"–":Math.abs(r)>=.5?"強い":Math.abs(r)>=.3?"中程度":Math.abs(r)>=.1?"弱い":"ほぼなし";
   analyze().forEach(a=>{
-    const r=a.r,w=r===null?0:Math.abs(r)*50,s=r===null?"–":Math.abs(r)>=.5?"強い":Math.abs(r)>=.3?"中程度":Math.abs(r)>=.1?"弱い":"ほぼなし";
-    h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span class="${r>0?"pos":"neg"}">${r===null?"データ不足":"相関 "+(r>0?"+":"")+r.toFixed(2)+"（"+s+"）"}</span></div>
-    <div class="bar"><i style="background:${r>0?"var(--pos)":"var(--neg)"};width:${w}%;${r>0?"left:50%":"right:50%"}"></i></div>
-    <div class="small">${a.note||""}${a.note?" ／ ":""}${a.n}日分${a.n<7?"（少数のため参考程度）":""}</div></div>`;
+    const r=a.r;
+    if(a.kind==="choice"){
+      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span>${r===null?"データ不足":"影響度 "+r.toFixed(2)+"（"+label(r)+"）"}</span></div>
+      <div class="bar"><i style="background:var(--ac);left:50%;width:${r===null?0:r*50}%"></i></div>
+      <div class="small">${a.note}${a.n<10?"（少数のため参考程度）":""}</div></div>`;
+    }else{
+      const w=r===null?0:Math.abs(r)*50;
+      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span class="${r>0?"pos":"neg"}">${r===null?"データ不足":"相関 "+(r>0?"+":"")+r.toFixed(2)+"（"+label(r)+"）"}</span></div>
+      <div class="bar"><i style="background:${r>0?"var(--pos)":"var(--neg)"};width:${w}%;${r>0?"left:50%":"right:50%"}"></i></div>
+      <div class="small">${a.note||""}${a.note?" ／ ":""}${a.n}日分${a.n<7?"（少数のため参考程度）":""}</div></div>`;
+    }
   });
-  return h+`<div class="small">プラスは「値が大きい（あり）ほどスコアが高い」、マイナスは逆の関係です。相関は因果を示すものではなく、要因同士が影響し合うこともあります。目安として14日分以上でご覧ください。</div>`;
+  h+=viewWords();
+  return h+`<div class="small">相関は、プラスなら「値が大きい（あり）ほどスコアが高い」、マイナスなら逆の関係です。選択式の「影響度」は、0〜1で、大きいほど選択肢ごとの差が大きいことを表します。いずれも因果を示すものではなく、要因同士が影響し合うこともあります。目安として14日分以上でご覧ください。</div>`;
 }
 /* ---------- history / factors / data ---------- */
 function viewHistory(){
   const ks=Object.keys(S.entries).sort().reverse();
   if(!ks.length)return `<div class="card">まだ記録がありません。「入力」から最初の1日を保存しましょう。</div>`;
-  return ks.map(k=>{const e=S.entries[k];
-    const parts=S.factors.filter(f=>e.v[f.id]!==undefined).map(f=>f.type==="bool"?`${esc(f.name)}：${e.v[f.id]?"あり":"なし"}`:`${esc(f.name)} ${e.v[f.id]}${esc(f.unit||"")}`).join("　");
-    return `<div class="card"><div class="hd"><b>${k}</b><span><b style="font-size:20px">${e.score}</b>点</span></div><div class="small">${parts}</div>
+  return ks.map(k=>{const e=S.entries[k],L=level(e.score);
+    const parts=S.factors.map(f=>{
+      const v=getVal(f,e,k);if(v===undefined||v===null||v==="")return "";
+      if(f.auto==="kw")return v?`${esc(f.name)}：あり`:"";
+      if(f.type==="bool")return `${esc(f.name)}：${v?"あり":"なし"}`;
+      if(f.type==="choice")return `${esc(f.name)}：${esc(v)}`;
+      return `${esc(f.name)} ${v}${esc(f.unit||"")}`;
+    }).filter(Boolean).join("　");
+    return `<div class="card"><div class="hd"><b>${k}</b><span>${L.e} <b style="font-size:20px">${e.score}</b>点</span></div><div class="small">${parts}</div>${e.note?`<div class="note">📝 ${esc(e.note)}</div>`:""}
     <div class="row" style="margin-top:8px"><button class="sm" data-edit="${k}">編集</button><button class="sm" data-del="${k}">${delArm===k?"本当に削除":"削除"}</button></div></div>`}).join("");
 }
+function factorDesc(f){
+  if(f.auto==="kw")return "備考のキーワード："+esc((f.kw||[]).join("、"));
+  if(f.auto==="season")return "選択式・日付から自動";
+  if(f.type==="choice")return "選択式："+esc((f.opts||[]).join("／"));
+  if(f.type==="bool")return "あり／なし";
+  return "数値"+(f.unit?"（"+esc(f.unit)+"）":"")+(f.computed?" ・自動計算":"");
+}
 function viewFactors(){
-  let h=`<div class="card"><b>新しい要因を追加</b><label for="nn">名前</label><input id="nn" placeholder="例：カフェイン、就寝前スマホ、運動">
-  <label for="nt">種類</label><select id="nt"><option value="bool">あり／なし</option><option value="num">数値</option></select>
-  <label for="nu">単位（数値のとき・任意）</label><input id="nu" placeholder="例：杯、分">
+  let h=`<div class="card"><b>新しい要因を追加</b><label for="nn">名前</label><input id="nn" placeholder="例：カフェイン、運動、仕事のストレス">
+  <label for="nt">種類</label><select id="nt"><option value="bool">あり／なし</option><option value="num">数値</option><option value="choice">選択式（いくつかから選ぶ）</option><option value="kw">備考のキーワード（自動判定）</option></select>
+  <div id="x_num" hidden><label for="nu">単位（任意）</label><input id="nu" placeholder="例：杯、分"></div>
+  <div id="x_choice" hidden><label for="no">選択肢（カンマ区切り、2つ以上）</label><input id="no" placeholder="例：低い,ふつう,高い"></div>
+  <div id="x_kw" hidden><label for="nk">キーワード（カンマ区切り）</label><input id="nk" placeholder="例：嫌,ムカ,怒,ストレス">
+  <div class="small" style="margin-top:4px">備考にこの言葉が含まれる日を「あり」、含まれない日を「なし」として、自動で分析します。備考を書かなかった日は「なし」になります。</div></div>
   <button class="btn" id="add">追加</button></div>`;
-  S.factors.forEach(f=>{h+=`<div class="card"><div class="hd"><span><b>${esc(f.name)}</b> <span class="small">${f.type==="bool"?"あり／なし":"数値"+(f.unit?"（"+esc(f.unit)+"）":"")}${f.computed?" ・自動計算":""}</span></span>
+  S.factors.forEach(f=>{h+=`<div class="card"><div class="hd"><span><b>${esc(f.name)}</b> <span class="small">${factorDesc(f)}</span></span>
   <button class="sm" data-rm="${f.id}">${delArm===f.id?"本当に削除":"削除"}</button></div></div>`});
-  return h+`<div class="small">要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります。名前を変えたい場合は、削除して追加し直してください。</div>`;
+  return h+`<div class="small">要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります（備考のキーワードは、過去の備考にも自動で当てはまります）。名前や中身を変えたい場合は、削除して追加し直してください。</div>`;
 }
 function viewData(){
   return `<div class="card"><b>バックアップ</b>
@@ -201,16 +372,25 @@ function viewData(){
   <div class="small">登録日数：${Object.keys(S.entries).length}日／要因：${S.factors.length}個</div>`;
 }
 function bindOthers(){
-  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{date=b.dataset.edit;entryDraft();tab="input";render()});
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{date=b.dataset.edit;delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.del){delete S.entries[delArm];delArm=null;persist();render()}else{delArm=b.dataset.del;render()}});
   document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.rm){S.factors=S.factors.filter(f=>f.id!==delArm);delArm=null;persist();render()}else{delArm=b.dataset.rm;render()}});
+  const nt=$("#nt");
+  if(nt){
+    const show=()=>{["num","choice","kw"].forEach(k=>{$("#x_"+k).hidden=nt.value!==k})};
+    nt.onchange=show;show();
+  }
   const add=$("#add");
   if(add)add.onclick=()=>{
-    const name=$("#nn").value.trim();if(!name){toast("名前を入力してください");return}
-    S.factors.push({id:"c"+Date.now().toString(36),name,type:$("#nt").value,unit:$("#nu").value.trim()});
-    persist();toast("追加しました");render();
+    const name=$("#nn").value.trim(),type=$("#nt").value;
+    if(!name){toast("名前を入力してください");return}
+    const f={id:"c"+Date.now().toString(36),name,type};
+    if(type==="num")f.unit=$("#nu").value.trim();
+    if(type==="choice"){f.opts=[...new Set(splitList($("#no").value))];if(f.opts.length<2){toast("選択肢を2つ以上入力してください");return}}
+    if(type==="kw"){f.type="bool";f.auto="kw";f.kw=splitList($("#nk").value);if(!f.kw.length){toast("キーワードを入力してください");return}}
+    S.factors.push(f);persist();toast("追加しました");render();
   };
   const ex=$("#exp");
   if(ex)ex.onclick=async()=>{
@@ -222,8 +402,8 @@ function bindOthers(){
   if(ib)ib.onclick=()=>{
     try{
       const o=JSON.parse($("#imp").value);
-      if(!o||typeof o!=="object"||!Array.isArray(o.factors)||typeof o.entries!=="object")throw 0;
-      S={factors:o.factors,entries:o.entries};persist();entryDraft();toast("読み込みました");render();
+      if(!o||typeof o!=="object"||!Array.isArray(o.factors)||!o.entries||typeof o.entries!=="object")throw 0;
+      S=o;migrate();persist();entryDraft();toast("読み込みました");render();
     }catch(e){toast("読み込めませんでした。内容を確認してください")}
   };
 }
@@ -231,11 +411,13 @@ function render(){
   renderNav();
   const v=$("#view");
   if(tab==="input"){if(!draft)entryDraft();v.innerHTML=viewInput();bindInput()}
+  else if(tab==="calendar"){v.innerHTML=viewCalendar();bindCalendar()}
   else{v.innerHTML=tab==="analysis"?viewAnalysis():tab==="history"?viewHistory():tab==="factors"?viewFactors():viewData();bindOthers()}
 }
 /* ---------- boot ---------- */
 (function(){
   try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.factors)&&o.entries)S=o}}catch(e){}
+  const before=S.ver;migrate();if(before!==S.ver)persist();
   let note="この端末に保存中";
   try{ // リンクに ?steps=1234&date=2026-11-05 が付いていれば歩数欄に入れる
     const p=new URLSearchParams(location.search),n=parseSteps(p.get("steps")||"");
