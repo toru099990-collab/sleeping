@@ -206,6 +206,7 @@ const isEmptyEntry=e=>!hasFac(e)&&!hasScore(e)&&!e.noteS&&!isNum(e.legacy);
 const scLabel=v=>v===undefined?"未入力":`${level(v).e} ${v}点`;
 function ent(d){return S.entries[d]||(S.entries[d]={v:{},sc:{},noteF:"",noteS:""})}
 function prune(d){const e=S.entries[d];if(e&&isEmptyEntry(e))delete S.entries[d]}
+let touched=false;
 const defDate=()=>mode==="fac"?addDays(today(),1):today();
 function entryDraft(){
   const e=S.entries[date];
@@ -241,8 +242,8 @@ function partsOf(e,k){
 }
 function viewFac(){
   const e=S.entries[date],saved=e&&hasFac(e);
-  let h=`<div class="card">${modeSeg()}<label for="dt">きょう（要因を入力する日）</label><input type="date" id="dt" value="${addDays(date,-1)}">
-  <div class="small" style="margin-top:6px">${fmtDay(addDays(date,-1))}の状態を入力します。保存すると、次の日（${fmtDay(date)}）の体調と組にして分析します。</div></div><div class="card">`;
+  let h=`<div class="card">${modeSeg()}<label for="dt">体調を感じる日（カレンダーの日付）</label><input type="date" id="dt" value="${date}">
+  <div class="small" style="margin-top:6px">入力するのは <b>${fmtDay(addDays(date,-1))}の要因</b> です。保存すると、カレンダーの${md(date)}の体調と組にして分析します。<br>（今夜の要因なら、日付は明日にします）</div></div><div class="card">`;
   S.factors.forEach(x=>{
     const v=draft.v[x.id];
     if(x.auto==="kw"){
@@ -267,7 +268,7 @@ function viewSc(){
   const e=S.entries[date],saved=e&&(hasScore(e)||e.noteS);
   const t=totalOf(draft.sc);
   const pd=addDays(date,-1),pp=partsOf(S.entries[date],date),pn=(S.entries[date]||{}).noteF;
-  let h=`<div class="card">${modeSeg()}<label for="dt">体調を感じた日（きょう）</label><input type="date" id="dt" value="${date}">
+  let h=`<div class="card">${modeSeg()}<label for="dt">体調を感じた日（カレンダーの日付）</label><input type="date" id="dt" value="${date}">
   <div class="small" style="margin-top:6px">${fmtDay(date)}の体調を、朝・昼・夕に分けて0〜100点で入力します。入力した分から、総合を自動で計算します。</div>
   <div class="small" style="margin-top:6px">前日（${md(pd)}）の要因：${pp||"未入力"}</div>${pn?`<div class="note">📝 前日：${esc(pn)}</div>`:""}</div><div class="card">`;
   h+=SLOTS.map(s=>{const v=draft.sc[s.k];
@@ -285,14 +286,14 @@ const viewInput=()=>mode==="fac"?viewFac():viewSc();
 function bindInput(){
   $("#modeseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
     mode=b.dataset.m;try{localStorage.setItem(MODEKEY,mode)}catch(e){}
-    date=defDate();delArm=null;entryDraft();render();
+    if(!touched)date=defDate();delArm=null;entryDraft();render();
   });
   const dt=$("#dt"),applyDt=()=>{
     const v=dt.value;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return; // 空（消去）や入力途中は無視して、いまの日付のままにする
-    const nd=mode==="fac"?addDays(v,1):v;
+    const nd=v;
     if(nd===date)return;
-    date=nd;delArm=null;entryDraft();render();
+    date=nd;touched=true;delArm=null;entryDraft();render();
   };
   dt.onchange=applyDt;dt.oninput=applyDt;
   if(mode==="fac")bindFac();else bindSc();
@@ -375,14 +376,14 @@ function viewCalendar(){
   <div class="legend">${LEVELS.map(l=>`<span>${l.e} ${l.t}</span>`).join("")}<span>・ 前日の要因は入力済み（スコア待ち）</span></div></div>
   <div class="card"><div class="hd"><b>この月の${TARGETS.find(x=>x.k===metric).n}の平均</b><span>${cnt?(sum/cnt).toFixed(1)+"点":"–"}（${cnt}日）</span></div>
   <div class="row" style="margin-top:8px"><button class="sm" id="ctoday">今月へ</button></div>
-  <div class="small" style="margin-top:6px">日付をタップすると、その日のスコア入力が開きます。総合は、入力された朝・昼・夕の平均です。</div></div>`;
+  <div class="small" style="margin-top:6px">日付をタップすると、その日のスコア入力が開きます（「要因」に切り替えると、その前日の要因を入力できます）。総合は、入力された朝・昼・夕の平均です。</div></div>`;
 }
 function bindCalendar(){
   const mv=n=>{cal.m+=n;if(cal.m<0){cal.m=11;cal.y--}else if(cal.m>11){cal.m=0;cal.y++}render()};
   $("#cprev").onclick=()=>mv(-1);$("#cnext").onclick=()=>mv(1);
   $("#ctoday").onclick=()=>{const n=new Date();cal.y=n.getFullYear();cal.m=n.getMonth();render()};
   document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{cal.metric=b.dataset.cm;render()});
-  document.querySelectorAll(".day").forEach(b=>b.onclick=()=>{date=b.dataset.d;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
+  document.querySelectorAll(".day").forEach(b=>b.onclick=()=>{date=b.dataset.d;touched=true;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
 }
 
 /* ---------- グラフ ---------- */
@@ -717,8 +718,8 @@ function viewData(){
   <div class="small">登録日数：${nd}日／要因：${S.factors.length}個</div>`;
 }
 function bindOthers(){
-  document.querySelectorAll("[data-editf]").forEach(b=>b.onclick=()=>{date=b.dataset.editf;mode="fac";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
-  document.querySelectorAll("[data-edits]").forEach(b=>b.onclick=()=>{date=b.dataset.edits;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
+  document.querySelectorAll("[data-editf]").forEach(b=>b.onclick=()=>{date=b.dataset.editf;touched=true;mode="fac";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
+  document.querySelectorAll("[data-edits]").forEach(b=>b.onclick=()=>{date=b.dataset.edits;touched=true;mode="sc";delArm=null;entryDraft();tab="input";render();window.scrollTo(0,0)});
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(delArm===b.dataset.del){delete S.entries[delArm];delArm=null;persist();render()}else{delArm=b.dataset.del;render()}});
   const mv=(id,dir)=>{const i=S.factors.findIndex(f=>f.id===id),j=i+dir;if(i<0||j<0||j>=S.factors.length)return;
