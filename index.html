@@ -62,6 +62,13 @@ input[type=range].unset{opacity:.4}
 .small{font-size:12.5px;color:var(--sub)}
 .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .pos{color:var(--pos)}.neg{color:var(--neg)}
+h3{margin:0 0 2px;font-size:16px}
+.rk{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--ln)}.rk:first-of-type{border-top:0}
+.rk .n{width:24px;height:24px;border-radius:50%;background:var(--bg);font-size:13px;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px}
+.pt{font-weight:700;font-size:18px;white-space:nowrap}
+.rel{font-size:11px;font-weight:400;padding:1px 6px;border-radius:5px;background:var(--bg);color:var(--sub);margin-left:4px}
+.band{display:grid;grid-template-columns:68px 1fr 44px;gap:6px;align-items:center;font-size:12.5px;margin:4px 0}
+.band .b{height:14px;border-radius:3px;background:var(--ac);opacity:.45}.band.best .b{background:var(--pos);opacity:1}.band.bad .b{background:var(--neg);opacity:1}
 .kwv{font-weight:600}
 .note{margin-top:6px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
@@ -194,6 +201,16 @@ function migrate(){
       if(e.note!==undefined){e.noteF=e.note;delete e.note}
     });
   }
+  S.factors.forEach(f=>{delete f.ideal});
+  // 新しい標準の要因を、一度だけ追加する（あとで削除しても、もう一度は追加しない）
+  if(!Array.isArray(S.seeded))S.seeded=[];
+  [[{id:"alcQty",name:"飲酒量",type:"num",unit:"杯"},"alcohol"],[{id:"caffeine",name:"カフェイン",type:"num",unit:"杯"},"alcQty"],[{id:"ac",name:"エアコン使用",type:"bool"},"ah"]].forEach(([def,after])=>{
+    if(S.seeded.includes(def.id))return;
+    S.seeded.push(def.id);
+    if(S.factors.some(f=>f.id===def.id))return;
+    const i=S.factors.findIndex(f=>f.id===after);
+    S.factors.splice(i>=0?i+1:S.factors.length,0,def);
+  });
   S.ver=4;
   Object.keys(S.entries).forEach(d=>{const e=S.entries[d];if(!e.v)e.v={};if(!e.sc)e.sc={}});
 }
@@ -496,59 +513,82 @@ function pearson(x,y){
   let sxy=0,sxx=0,syy=0;for(let i=0;i<n;i++){sxy+=(x[i]-mx)*(y[i]-my);sxx+=(x[i]-mx)**2;syy+=(y[i]-my)**2}
   return sxx&&syy?sxy/Math.sqrt(sxx*syy):null;
 }
-function analyze(k){
+/* ---------- 分析：どんな条件のときに、スコアが上がる／下がるか ---------- */
+const BANDS={tempIn:2,tempOut:3,rhIn:10,ah:2};   // 「ちょうど良い帯」を探す要因と、帯の幅
+const MINN=3,MINDIFF=5;                          // 条件ごとの最低日数／関係ありとみなす平均点の差
+const fmtN=v=>(Math.round(v*100)/100).toLocaleString("ja-JP");
+const niceStep=f=>({steps:500,tempIn:1,tempOut:1,rhIn:5,ah:1})[f.id]||null;
+const varOf=a=>{if(a.length<2)return 0;const m=mean(a);return a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1)};
+function cmp(a,b){ // a＝条件に当てはまる日の点数、b＝それ以外の日の点数
+  const na=a.length,nb=b.length,ma=mean(a),mb=mean(b),diff=ma-mb,se=Math.sqrt(varOf(a)/na+varOf(b)/nb);
+  const t=se>0?diff/se:(diff===0?0:99);
+  return {na,nb,ma,mb,diff,t};
+}
+function levelsText(rows,f){ // 杯数のような少ない整数は、値ごとの平均点も並べる
+  const vals=rows.map(r=>r.v);
+  if(f.type!=="num"||!vals.every(v=>isNum(v)&&Number.isInteger(v)))return "";
+  const dist=[...new Set(vals)].sort((a,b)=>a-b);
+  if(dist.length<3||dist.length>10)return "";
+  const cap=dist.length>7?dist[6]:null,u=f.unit||"",g={};
+  rows.forEach(r=>{const key=cap!==null&&r.v>=cap?cap:r.v;(g[key]=g[key]||[]).push(r.y)});
+  return Object.keys(g).map(Number).sort((a,b)=>a-b).map(v=>`${v}${u}${cap!==null&&v===cap?"以上":""} ${mean(g[v]).toFixed(1)}点（${g[v].length}日）`).join("　／　");
+}
+function effects(k){
   const items=Object.keys(S.entries).map(d=>({d,e:S.entries[d],y:scoreOf(S.entries[d],k)})).filter(x=>x.y!==undefined);
-  return S.factors.map(f=>{
+  const good=[],bad=[],skip=[];
+  S.factors.forEach(f=>{
     const rows=[];
-    items.forEach(({d,e,y})=>{const v=getVal(f,e,d);if(v!==undefined&&v!==null&&v!=="")rows.push({v,y})});
+    items.forEach(({d,e,y})=>{const v=getVal(f,e,d);if(v!==undefined&&v!==null&&v!=="")rows.push({v:f.type==="bool"||f.auto==="kw"?(v?1:0):v,y})});
+    if(!rows.length)return;
+    if(f.type==="num")rows.splice(0,rows.length,...rows.filter(r=>isNum(r.v)));
+    if(rows.length<5){skip.push({f,why:`記録が少なくて判断できません（${rows.length}日分）`});return}
+    const cands=[],u=f.unit||"";
+    const mk=(pred,cond,rest,extra)=>{
+      const a=rows.filter(pred).map(r=>r.y),b=rows.filter(r=>!pred(r)).map(r=>r.y);
+      if(a.length<MINN||b.length<MINN)return;
+      cands.push({f,cond,rest,...cmp(a,b),...extra});
+    };
     if(f.type==="choice"){
-      const g={};rows.forEach(p=>{(g[p.v]=g[p.v]||[]).push(p.y)});
-      const ks=Object.keys(g),N=rows.length,kk=ks.length;
-      let r=null;
-      if(kk>=2&&N>kk){ // 選択肢が多いほど偶然で大きく出やすいので、その分を差し引く
-        const m=mean(rows.map(p=>p.y));let ssb=0,sst=0;
-        ks.forEach(q=>{ssb+=g[q].length*(mean(g[q])-m)**2});rows.forEach(p=>{sst+=(p.y-m)**2});
-        if(sst>0){const msw=(sst-ssb)/(N-kk);r=Math.sqrt(Math.max(0,(ssb-(kk-1)*msw)/sst))}
-      }
-      ks.sort((a,b)=>mean(g[b])-mean(g[a]));
-      const note=ks.map(q=>`${esc(q)} ${mean(g[q]).toFixed(1)}点（${g[q].length}日）`).join(" ／ ");
-      return {f,kind:"choice",r,n:N,note,best:ks.length?[ks[0],mean(g[ks[0]])]:null,worst:ks.length?[ks[ks.length-1],mean(g[ks[ks.length-1]])]:null};
+      [...new Set(rows.map(r=>r.v))].forEach(o=>mk(r=>r.v===o,`${o}の日`,"それ以外の日"));
+    }else if(f.type==="bool"||f.auto==="kw"){
+      mk(r=>!!r.v,"ありの日","なしの日");
+    }else if(BANDS[f.id]){
+      const w=BANDS[f.id],bi=r=>Math.floor(r.v/w),idx=[...new Set(rows.map(bi))].sort((a,b)=>a-b),zones=[];
+      idx.forEach(i=>{zones.push([i]);if(idx.includes(i+1))zones.push([i,i+1])});
+      zones.forEach(z=>mk(r=>{const b=bi(r);return b>=z[0]&&b<=z[z.length-1]},`${z[0]*w}〜${(z[z.length-1]+1)*w}${u}の日`,"それ以外の日"));
+    }else{
+      const dist=[...new Set(rows.map(r=>r.v))].sort((a,b)=>a-b),step=niceStep(f);
+      let cuts;
+      if(dist.every(Number.isInteger)&&dist.length<=10)cuts=dist.slice(1);
+      else{cuts=[];for(let i=1;i<dist.length;i++){const m=(dist[i-1]+dist[i])/2;cuts.push(step?Math.round(m/step)*step:+m.toPrecision(2))}cuts=[...new Set(cuts)]}
+      cuts.forEach(c=>mk(r=>r.v>=c,`${fmtN(c)}${u}以上の日`,"それ未満の日"));
     }
-    const pts=rows.filter(p=>isNum(p.v)).map(p=>({x:f.type==="bool"?(p.v?1:0):p.v,y:p.y}));
-    const r=pts.length>=3?pearson(pts.map(p=>p.x),pts.map(p=>p.y)):null;
-    let note="",na=0,nb=0,diff=null;
-    if(f.type==="bool"){
-      const a=pts.filter(p=>p.x===1).map(p=>p.y),b=pts.filter(p=>p.x===0).map(p=>p.y);na=a.length;nb=b.length;
-      note=`あり ${a.length?mean(a).toFixed(1):"–"}点（${a.length}日） ／ なし ${b.length?mean(b).toFixed(1):"–"}点（${b.length}日）`;
-      if(a.length&&b.length){diff=mean(a)-mean(b);note+=` ／ 差 ${diff>0?"+":""}${diff.toFixed(1)}`}
-    }else if(pts.length>=4){
-      const s=[...pts].sort((p,q)=>p.x-q.x),h=Math.floor(s.length/2);
-      note=`低い側 ${mean(s.slice(0,h).map(p=>p.y)).toFixed(1)}点 ／ 高い側 ${mean(s.slice(-h).map(p=>p.y)).toFixed(1)}点`;
-    }
-    return {f,kind:"num",r,n:pts.length,note,na,nb,diff};
-  }).filter(a=>a.n>0).sort((a,b)=>Math.abs(b.r??0)-Math.abs(a.r??0));
+    if(!cands.length){skip.push({f,why:"条件ごとの日数が足りず、判断できません"});return}
+    // 境目をたくさん試すほど、偶然で差が大きく見えやすくなるため、試した数に応じて「参考程度」の基準を厳しくする
+    const tmin=2+0.25*Math.log(cands.length);
+    cands.forEach(c=>{c.weak=!(c.na>=5&&c.nb>=5&&c.na+c.nb>=14&&Math.abs(c.t)>=tmin)});
+    const levels=levelsText(rows,f);
+    const pick=arr=>arr.reduce((a,b)=>Math.abs(b.diff)>Math.abs(a.diff)?b:a);
+    let added=false,biggest=pick(cands);
+    if(BANDS[f.id]){ // ちょうど良い帯（プラス）と、良くない帯（マイナス）を別々に探す
+      const pos=cands.filter(c=>c.diff>=MINDIFF),neg=cands.filter(c=>c.diff<=-MINDIFF);
+      if(pos.length){good.push({...pick(pos),levels});added=true}
+      if(neg.length){bad.push({...pick(neg),levels});added=true}
+    }else if(Math.abs(biggest.diff)>=MINDIFF){(biggest.diff>0?good:bad).push({...biggest,levels});added=true}
+    if(!added)skip.push({f,why:`平均点の差が小さい（最大${Math.abs(biggest.diff).toFixed(1)}点）`});
+  });
+  good.sort((a,b)=>b.diff-a.diff);bad.sort((a,b)=>a.diff-b.diff);
+  return {good,bad,skip,N:items.length};
 }
-const strength=r=>r===null?"–":Math.abs(r)>=.5?"強い":Math.abs(r)>=.3?"中程度":Math.abs(r)>=.1?"弱い":"ほぼなし";
-// 要約に使える（十分な記録と、はっきりした関係のある）要因だけを選ぶ
-function strong(k,limit){
-  return analyze(k).filter(a=>{
-    if(a.r===null||a.n<5||Math.abs(a.r)<0.3)return false;
-    if(a.f.type==="bool"&&!(a.na>=2&&a.nb>=2))return false;
-    if(a.kind==="choice"&&!a.best)return false;
-    return true;
-  }).slice(0,limit);
+// 室温・湿度などの「帯ごとの平均点」
+function bandStats(k,f){
+  const w=BANDS[f.id],g={};
+  Object.keys(S.entries).forEach(d=>{const e=S.entries[d],y=scoreOf(e,k),v=getVal(f,e,d);
+    if(y===undefined||!isNum(v))return;const b=Math.floor(v/w);(g[b]=g[b]||[]).push(y)});
+  return Object.keys(g).map(Number).sort((a,b)=>a-b).map(b=>({lo:b*w,hi:(b+1)*w,n:g[b].length,m:mean(g[b])}));
 }
-function phrase(a){
-  const f=a.f;
-  if(a.kind==="choice")return `「${f.name}」で差があり、${a.best[0]}が高め（${a.best[1].toFixed(1)}点）、${a.worst[0]}が低め（${a.worst[1].toFixed(1)}点）`;
-  if(f.type==="bool")return `「${f.name}」がある日は、ない日より平均${Math.abs(a.diff).toFixed(1)}点${a.diff>0?"高":"低"}い（あり${a.na}日／なし${a.nb}日）`;
-  return `「${f.name}」が大きい日ほどスコアが${a.r>0?"高":"低"}い傾向（相関${a.r>0?"+":""}${a.r.toFixed(2)}）`;
-}
-function short(a){
-  if(a.kind==="choice")return `${a.f.name} 影響度${a.r.toFixed(2)}`;
-  if(a.f.type==="bool")return `${a.f.name} あり${a.diff>0?"+":""}${a.diff.toFixed(1)}点`;
-  return `${a.f.name} 相関${a.r>0?"+":""}${a.r.toFixed(2)}`;
-}
+const phrase=c=>`「${c.f.name}」：${c.cond}は、${c.rest}より平均${Math.abs(c.diff).toFixed(1)}点${c.diff>0?"高":"低"}い（${c.na}日／${c.nb}日${c.weak?"・参考程度":""}）`;
+const short=c=>`${c.f.name} ${c.cond.replace(/の日$/,"")} ${c.diff>0?"+":"-"}${Math.abs(c.diff).toFixed(1)}点${c.weak?"（参考）":""}`;
 function buildSummary(){
   const ds=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])).sort(),N=ds.length;
   if(N<3)return ["総評は、スコアが入った日が3日分以上になると表示されます（現在"+N+"日）。"];
@@ -564,10 +604,11 @@ function buildSummary(){
     const tot=ds.map(d=>scoreOf(S.entries[d],"total")),rec=tot.slice(-7),prev=tot.slice(-14,-7);
     if(prev.length>=3){const df=mean(rec)-mean(prev);out.push(`直近${rec.length}日分の総合は平均${mean(rec).toFixed(1)}点で、その前の${prev.length}日分（${mean(prev).toFixed(1)}点）より${df>0?"+":""}${df.toFixed(1)}点、${df>=3?"上向き":df<=-3?"下向き":"ほぼ横ばい"}です。`)}
   }
-  const t=strong("total",3);
-  if(t.length)out.push("総合スコアに関係が見られた要因：\n"+t.map(a=>"・"+phrase(a)).join("\n"));
-  else out.push("総合スコアについては、はっきりした関係のある要因は、まだ見つかっていません。");
-  SLOTS.forEach(s=>{const a=strong(s.k,1);if(a.length)out.push(`${s.n}：${phrase(a[0])}`)});
+  const E=effects("total"),lst=a=>a.slice(0,3).map(c=>"・"+phrase(c)).join("\n");
+  if(E.good.length)out.push("総合スコアを良くしていた要因：\n"+lst(E.good));
+  if(E.bad.length)out.push("総合スコアを悪くしていた要因：\n"+lst(E.bad));
+  if(!E.good.length&&!E.bad.length)out.push("総合スコアについては、平均点に差が出る要因が、まだ見つかっていません。");
+  SLOTS.forEach(s=>{const e=effects(s.k),top=[...e.good.slice(0,1),...e.bad.slice(0,1)];if(top.length)out.push(`${s.n}：`+top.map(phrase).join("　／　"))});
   if(N<14)out.push(`記録がまだ${N}日分と少ないため、偶然の影響を受けやすい点にご注意ください。目安として14日分以上でご覧ください。`);
   out.push("※統計にもとづく自動の文章です。因果関係や診断を示すものではありません。");
   return out;
@@ -638,28 +679,29 @@ function viewAnalysis(){
   <details><summary>相談文に含める要因を選ぶ</summary><div class="small" style="margin-top:6px">チェックを外した要因は、相談文に含めません。備考の文章は、そのまま含まれます。</div>
   ${S.factors.map(f=>`<label class="ck"><input type="checkbox" data-ai="${f.id}"${aiInc[f.id]===false?"":" checked"}>${esc(f.name)}</label>`).join("")}</details>
   <div class="small" id="aimsg"></div></div>`;
-  h+=`<div class="card"><b>時間帯ごとの主な要因</b><div class="small" style="margin-top:4px">記録が5日分以上あり、関係がはっきり（絶対値0.3以上）した要因を、最大2つ表示します。</div>`;
-  TARGETS.forEach(t=>{const a=strong(t.k,2),c=Object.keys(S.entries).filter(d=>scoreOf(S.entries[d],t.k)!==undefined).length;
-    h+=`<div class="hd" style="margin-top:8px"><b>${t.n}</b><span class="small">${c}日分</span></div><div class="small">${a.length?a.map(x=>esc(short(x))).join(" ／ "):(c<5?"データ不足":"はっきりした要因なし")}</div>`});
+  h+=`<div class="card"><b>時間帯ごとの主な要因</b><div class="small" style="margin-top:4px">良くする要因と悪くする要因を、1つずつ表示します（平均点の差が約${MINDIFF}点以上のものだけ）。</div>`;
+  TARGETS.forEach(t=>{const e=effects(t.k),c=e.N;
+    const g=e.good[0],b=e.bad[0];
+    h+=`<div class="hd" style="margin-top:8px"><b>${t.n}</b><span class="small">${c}日分</span></div><div class="small">${g||b?[g?"👍 "+esc(short(g)):"",b?"👎 "+esc(short(b)):""].filter(Boolean).join("<br>"):(c<5?"データ不足":"はっきりした要因なし")}</div>`});
   h+=`</div><div class="chips" role="group" aria-label="くわしく見る点数">${TARGETS.map(t=>`<button class="chip${an.t===t.k?" on":""}" data-at="${t.k}">${t.n}を詳しく</button>`).join("")}</div>`;
-  const label=TARGETS.find(x=>x.k===an.t).n;
-  const list=analyze(an.t);
-  h+=`<div class="card"><div class="hd"><b>${label}スコアの平均</b><span>${(mean(Object.keys(S.entries).map(d=>scoreOf(S.entries[d],an.t)).filter(v=>v!==undefined))).toFixed(1)}点</span></div></div>`;
-  list.forEach(a=>{
-    const r=a.r;
-    if(a.kind==="choice"){
-      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span>${r===null?"データ不足":"影響度 "+r.toFixed(2)+"（"+strength(r)+"）"}</span></div>
-      <div class="bar"><i style="background:var(--ac);left:50%;width:${r===null?0:r*50}%"></i></div>
-      <div class="small">${a.note}${a.n<10?"（少数のため参考程度）":""}</div></div>`;
-    }else{
-      const w=r===null?0:Math.abs(r)*50;
-      h+=`<div class="card"><div class="hd"><b>${esc(a.f.name)}</b><span class="${r>0?"pos":"neg"}">${r===null?"データ不足":"相関 "+(r>0?"+":"")+r.toFixed(2)+"（"+strength(r)+"）"}</span></div>
-      <div class="bar"><i style="background:${r>0?"var(--pos)":"var(--neg)"};width:${w}%;${r>0?"left:50%":"right:50%"}"></i></div>
-      <div class="small">${a.note||""}${a.note?" ／ ":""}${a.n}日分${a.n<7?"（少数のため参考程度）":""}</div></div>`;
-    }
+  const label=TARGETS.find(x=>x.k===an.t).n,E=effects(an.t);
+  h+=`<div class="card"><div class="hd"><b>${label}スコアの平均</b><span>${E.N?(mean(Object.keys(S.entries).map(d=>scoreOf(S.entries[d],an.t)).filter(v=>v!==undefined))).toFixed(1)+"点":"–"}</span></div><div class="small">${E.N}日分（前日の状態 → 次の日の体調）</div></div>`;
+  const card=(c,i,sign)=>`<div class="rk"><div class="n">${i+1}</div><div style="flex:1"><div class="hd"><b>${esc(c.f.name)}</b><span class="pt ${sign}">${c.diff>0?"+":"-"}${Math.abs(c.diff).toFixed(1)}点${c.weak?`<span class="rel">参考程度</span>`:""}</span></div>
+    <div class="cond">${esc(c.cond)}：平均 ${c.ma.toFixed(1)}点（${c.na}日）<br><span class="small">${esc(c.rest)}：${c.mb.toFixed(1)}点（${c.nb}日）</span></div>${c.levels?`<div class="small" style="margin-top:4px">${esc(c.levels)}</div>`:""}</div></div>`;
+  h+=`<div class="card"><h3>👍 ${label}スコアを良くする要因</h3><div class="small">効きが大きい順です。</div>${E.good.length?E.good.map((c,i)=>card(c,i,"pos")).join(""):`<div class="small" style="margin-top:8px">まだ見つかっていません。</div>`}</div>`;
+  h+=`<div class="card"><h3>👎 ${label}スコアを悪くする要因</h3><div class="small">効きが大きい順です。</div>${E.bad.length?E.bad.map((c,i)=>card(c,i,"neg")).join(""):`<div class="small" style="margin-top:8px">まだ見つかっていません。</div>`}</div>`;
+  // 帯ごとの平均点（室温・室内湿度）
+  S.factors.filter(f=>f.id==="tempIn"||f.id==="rhIn").forEach(f=>{
+    const bs=bandStats(an.t,f);if(!bs.length)return;
+    const gz=E.good.find(c=>c.f.id===f.id&&c.cond.includes("〜")),bz=E.bad.find(c=>c.f.id===f.id&&c.cond.includes("〜")),u=f.unit||"";
+    const inZ=(b,c)=>{if(!c)return false;const m=c.cond.match(/^(-?[\d.]+)〜(-?[\d.]+)/);return m&&b.lo>=+m[1]&&b.hi<=+m[2]};
+    h+=`<div class="card"><h3>${f.id==="tempIn"?"🌡":"💧"} ${esc(f.name)}の帯ごとの平均点</h3><div class="small">あなたにとって快適な${f.id==="tempIn"?"温度":"湿度"}を探します。</div><div style="margin-top:8px">`+
+      bs.map(b=>`<div class="band ${inZ(b,gz)?"best":inZ(b,bz)?"bad":""}"><span>${b.lo}〜${b.hi}${u}</span><div class="b" style="width:${Math.max(2,Math.round(b.m))}%"></div><span>${b.m.toFixed(0)}点<br><span class="small">${b.n}日</span></span></div>`).join("")+
+      `</div><div class="small" style="margin-top:6px">${gz?`<b>快適帯の目安：${esc(gz.cond.replace(/の日$/,""))}</b>（平均${gz.ma.toFixed(0)}点${gz.weak?"・参考程度":""}）`:"快適帯は、まだ判断できません（帯ごとに3日以上の記録が必要です）。"}${bz?`　良くない帯：${esc(bz.cond.replace(/の日$/,""))}`:""}</div></div>`;
   });
+  if(E.skip.length)h+=`<div class="card"><details><summary>スコアとの関係が小さい／判断できない要因（${E.skip.length}個）</summary><div class="small" style="margin-top:8px">${E.skip.map(x=>`${esc(x.f.name)}（${esc(x.why)}）`).join("<br>")}</div></details></div>`;
   h+=viewWords(an.t);
-  return h+`<div class="small">相関は、プラスなら「値が大きい（あり）ほどスコアが高い」、マイナスなら逆の関係です。選択式の「影響度」は、0〜1で、大きいほど選択肢ごとの差が大きいことを表します。いずれも因果を示すものではなく、要因同士が影響し合うこともあります。目安として14日分以上でご覧ください。</div>`;
+  return h+`<div class="small">要因ごとに「ある条件の日」と「それ以外の日」の平均点を比べています。条件の境目（歩数の○歩以上など）は、記録からいちばん差が大きくなる所を自動で探しているため、日数が少ないうちは偶然に左右されます。「参考程度」は、日数が少ない、または差が偶然かもしれない結果です。目安は、条件ごとに5日以上、全体で14日以上です。関係が見られただけで、原因とは限りません。</div>`;
 }
 function bindAnalysis(){
   document.querySelectorAll("[data-at]").forEach(b=>b.onclick=()=>{an.t=b.dataset.at;render()});
@@ -701,8 +743,11 @@ function viewFactors(){
   <div id="x_kw" hidden><label for="nk">キーワード（カンマ区切り）</label><input id="nk" placeholder="例：嫌,ムカ,怒,ストレス">
   <div class="small" style="margin-top:4px">備考にこの言葉が含まれる日を「あり」、含まれない日を「なし」として、自動で分析します。備考を書かなかった日は「なし」になります。</div></div>
   <button class="btn" id="add">追加</button></div>`;
-  S.factors.forEach((f,i)=>{h+=`<div class="card" id="fc_${f.id}"><div class="hd"><span><b>${esc(f.name)}</b> <span class="small">${factorDesc(f)}</span></span>
-  <span class="row" style="gap:6px"><button class="sm" data-up="${f.id}" aria-label="${esc(f.name)}を上へ"${i===0?" disabled":""}>▲</button><button class="sm" data-dn="${f.id}" aria-label="${esc(f.name)}を下へ"${i===S.factors.length-1?" disabled":""}>▼</button><button class="sm" data-rm="${f.id}">${delArm===f.id?"本当に削除":"削除"}</button></span></div></div>`});
+  S.factors.forEach((f,i)=>{
+    h+=`<div class="card" id="fc_${f.id}"><div class="hd"><span><b>${esc(f.name)}</b> <span class="small">${factorDesc(f)}</span></span>
+  <span class="row" style="gap:6px"><button class="sm" data-up="${f.id}" aria-label="${esc(f.name)}を上へ"${i===0?" disabled":""}>▲</button><button class="sm" data-dn="${f.id}" aria-label="${esc(f.name)}を下へ"${i===S.factors.length-1?" disabled":""}>▼</button><button class="sm" data-rm="${f.id}">${delArm===f.id?"本当に削除":"削除"}</button></span></div>`;
+    h+=`</div>`;
+  });
   return h+`<div class="small">▲▼で並べ替えると、入力画面の要因の順番も変わります。要因を削除しても、過去の記録の値は残ります。追加した要因は、過去の日には値が入っていない扱いになります（備考のキーワードは、過去の備考にも自動で当てはまります）。名前や中身を変えたい場合は、削除して追加し直してください。</div>`;
 }
 function viewData(){
