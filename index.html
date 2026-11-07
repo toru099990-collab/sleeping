@@ -67,7 +67,7 @@ h3{margin:0 0 2px;font-size:16px}
 .rk .n{width:24px;height:24px;border-radius:50%;background:var(--bg);font-size:13px;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px}
 .pt{font-weight:700;font-size:18px;white-space:nowrap}
 .rel{font-size:11px;font-weight:400;padding:1px 6px;border-radius:5px;background:var(--bg);color:var(--sub);margin-left:4px}
-.band{display:grid;grid-template-columns:68px 1fr 44px;gap:6px;align-items:center;font-size:12.5px;margin:4px 0}
+.band{display:grid;grid-template-columns:128px 1fr 44px;gap:6px;align-items:center;font-size:12.5px;margin:4px 0}
 .band .b{height:14px;border-radius:3px;background:var(--ac);opacity:.45}.band.best .b{background:var(--pos);opacity:1}.band.bad .b{background:var(--neg);opacity:1}
 .kwv{font-weight:600}
 .note{margin-top:6px;font-size:13.5px;white-space:pre-wrap;word-break:break-word}
@@ -576,8 +576,16 @@ function pearson(x,y){
   return sxx&&syy?sxy/Math.sqrt(sxx*syy):null;
 }
 /* ---------- 分析：どんな条件のときに、スコアが上がる／下がるか ---------- */
-const BANDS={tempIn:2,tempOut:3,rhIn:10,ah:2,sleepDur:1};   // 「ちょうど良い帯」を探す要因と、帯の幅
+const BANDS={tempIn:2,tempOut:3,rhIn:10,ah:2,sleepDur:0.5};   // 「ちょうど良い帯」を探す要因と、帯の幅
 const MINN=3,MINDIFF=5;                          // 条件ごとの最低日数／関係ありとみなす平均点の差
+const durText=h=>{const t=Math.round(h*60),hh=Math.floor(t/60),mm=t%60;return `${hh}時間${mm?mm+"分":""}`};
+// 要因の値を、読みやすい形にする（時刻は 6:40／翌1:00、睡眠時間は 7時間30分）
+function fmtVal(f,v){
+  if(f.time)return clockJ(v);
+  if(f.id==="sleepDur")return durText(v);
+  const u=f.unit||"",r=Math.abs(v)>=100?Math.round(v):Math.round(v*10)/10;
+  return r.toLocaleString("ja-JP")+u;
+}
 const fmtN=v=>(Math.round(v*100)/100).toLocaleString("ja-JP");
 const niceStep=f=>({steps:500,tempIn:1,tempOut:1,rhIn:5,ah:1,bed:0.5,wake:0.5,sleepDur:0.5})[f.id]||null;
 const varOf=a=>{if(a.length<2)return 0;const m=mean(a);return a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1)};
@@ -617,13 +625,13 @@ function effects(k){
     }else if(BANDS[f.id]){
       const w=BANDS[f.id],bi=r=>Math.floor(r.v/w),idx=[...new Set(rows.map(bi))].sort((a,b)=>a-b),zones=[];
       idx.forEach(i=>{zones.push([i]);if(idx.includes(i+1))zones.push([i,i+1])});
-      zones.forEach(z=>mk(r=>{const b=bi(r);return b>=z[0]&&b<=z[z.length-1]},`${z[0]*w}〜${(z[z.length-1]+1)*w}${u}の日`,"それ以外の日"));
+      zones.forEach(z=>mk(r=>{const b=bi(r);return b>=z[0]&&b<=z[z.length-1]},f.id==="sleepDur"?`${durText(z[0]*w)}〜${durText((z[z.length-1]+1)*w)}の日`:`${z[0]*w}〜${(z[z.length-1]+1)*w}${u}の日`,"それ以外の日",{zlo:z[0]*w,zhi:(z[z.length-1]+1)*w}));
     }else{
       const dist=[...new Set(rows.map(r=>r.v))].sort((a,b)=>a-b),step=niceStep(f);
       let cuts;
       if(dist.every(Number.isInteger)&&dist.length<=10)cuts=dist.slice(1);
       else{cuts=[];for(let i=1;i<dist.length;i++){const m=(dist[i-1]+dist[i])/2;cuts.push(step?Math.round(m/step)*step:+m.toPrecision(2))}cuts=[...new Set(cuts)]}
-      cuts.forEach(c=>mk(r=>r.v>=c,f.time?`${clockJ(c)}以降の日`:`${fmtN(c)}${u}以上の日`,f.time?`${clockJ(c)}より前の日`:"それ未満の日"));
+      cuts.forEach(c=>mk(r=>r.v>=c,f.time?`${clockJ(c)}以降の日`:f.id==="sleepDur"?`${durText(c)}以上の日`:`${fmtN(c)}${u}以上の日`,f.time?`${clockJ(c)}より前の日`:"それ未満の日"));
     }
     if(!cands.length){skip.push({f,why:"条件ごとの日数が足りず、判断できません"});return}
     // 境目をたくさん試すほど、偶然で差が大きく見えやすくなるため、試した数に応じて「参考程度」の基準を厳しくする
@@ -641,6 +649,24 @@ function effects(k){
   });
   good.sort((a,b)=>b.diff-a.diff);bad.sort((a,b)=>a.diff-b.diff);
   return {good,bad,skip,N:items.length};
+}
+// 方法1：スコアが高かった日と低かった日で、要因の実際の値（平均）を比べる
+function actualValues(k){
+  const items=Object.keys(S.entries).map(d=>({d,e:S.entries[d],y:scoreOf(S.entries[d],k)})).filter(x=>x.y!==undefined);
+  const out=[];
+  S.factors.forEach(f=>{
+    if(f.type!=="num")return;
+    const rows=[];items.forEach(({d,e,y})=>{const v=getVal(f,e,d);if(isNum(v))rows.push({v,y})});
+    const N=rows.length,n=Math.floor(N/3);
+    if(n<3)return;
+    rows.sort((a,b)=>b.y-a.y);
+    const top=rows.slice(0,n),bot=rows.slice(-n);
+    if(top[n-1].y===bot[0].y&&top.every(r=>r.y===top[0].y))return;
+    const mt=mean(top.map(r=>r.v)),mb=mean(bot.map(r=>r.v)),sd=Math.sqrt(varOf(rows.map(r=>r.v)));
+    if(!(sd>0))return;
+    out.push({f,n,mt,mb,mtY:mean(top.map(r=>r.y)),mbY:mean(bot.map(r=>r.y)),gap:Math.abs(mt-mb)/sd,weak:n<5||N<14});
+  });
+  return out.sort((a,b)=>b.gap-a.gap);
 }
 // 室温・湿度などの「帯ごとの平均点」
 function bandStats(k,f){
@@ -752,13 +778,17 @@ function viewAnalysis(){
     <div class="cond">${esc(c.cond)}：平均 ${c.ma.toFixed(1)}点（${c.na}日）<br><span class="small">${esc(c.rest)}：${c.mb.toFixed(1)}点（${c.nb}日）</span></div>${c.levels?`<div class="small" style="margin-top:4px">${esc(c.levels)}</div>`:""}</div></div>`;
   h+=`<div class="card"><h3>👍 ${label}スコアを良くする要因</h3><div class="small">効きが大きい順です。</div>${E.good.length?E.good.map((c,i)=>card(c,i,"pos")).join(""):`<div class="small" style="margin-top:8px">まだ見つかっていません。</div>`}</div>`;
   h+=`<div class="card"><h3>👎 ${label}スコアを悪くする要因</h3><div class="small">効きが大きい順です。</div>${E.bad.length?E.bad.map((c,i)=>card(c,i,"neg")).join(""):`<div class="small" style="margin-top:8px">まだ見つかっていません。</div>`}</div>`;
+  const AV=actualValues(an.t);
+  if(AV.length)h+=`<div class="card"><h3>🔎 良い日と悪い日の実際の値</h3><div class="small">${label}スコアが高かった日（上位3分の1）と低かった日（下位3分の1）で、各要因の平均を比べます。値の違いが大きい順です。</div>`+
+    AV.map(a=>`<div class="rk"><div style="flex:1"><div class="hd"><b>${esc(a.f.name)}</b>${a.weak?`<span class="rel">参考程度</span>`:""}</div>
+      <div class="cond">👍 良かった日：<b>${esc(fmtVal(a.f,a.mt))}</b> <span class="small">（平均${a.mtY.toFixed(0)}点・${a.n}日）</span><br>👎 悪かった日：<b>${esc(fmtVal(a.f,a.mb))}</b> <span class="small">（平均${a.mbY.toFixed(0)}点・${a.n}日）</span></div></div></div>`).join("")+`</div>`;
   // 帯ごとの平均点（室温・室内湿度）
   S.factors.filter(f=>f.id==="tempIn"||f.id==="rhIn"||f.id==="sleepDur").forEach(f=>{
     const bs=bandStats(an.t,f);if(!bs.length)return;
-    const gz=E.good.find(c=>c.f.id===f.id&&c.cond.includes("〜")),bz=E.bad.find(c=>c.f.id===f.id&&c.cond.includes("〜")),u=f.unit||"";
-    const inZ=(b,c)=>{if(!c)return false;const m=c.cond.match(/^(-?[\d.]+)〜(-?[\d.]+)/);return m&&b.lo>=+m[1]&&b.hi<=+m[2]};
+    const gz=E.good.find(c=>c.f.id===f.id&&c.zlo!==undefined),bz=E.bad.find(c=>c.f.id===f.id&&c.zlo!==undefined),u=f.unit||"";
+    const inZ=(b,c)=>!!c&&c.zlo!==undefined&&b.lo>=c.zlo-1e-9&&b.hi<=c.zhi+1e-9;
     h+=`<div class="card"><h3>${f.id==="tempIn"?"🌡":f.id==="rhIn"?"💧":"😴"} ${esc(f.name)}の帯ごとの平均点</h3><div class="small">あなたにとって快適な${f.id==="tempIn"?"温度":f.id==="rhIn"?"湿度":"睡眠時間"}を探します。</div><div style="margin-top:8px">`+
-      bs.map(b=>`<div class="band ${inZ(b,gz)?"best":inZ(b,bz)?"bad":""}"><span>${b.lo}〜${b.hi}${u}</span><div class="b" style="width:${Math.max(2,Math.round(b.m))}%"></div><span>${b.m.toFixed(0)}点<br><span class="small">${b.n}日</span></span></div>`).join("")+
+      bs.map(b=>`<div class="band ${inZ(b,gz)?"best":inZ(b,bz)?"bad":""}"><span>${f.id==="sleepDur"?durText(b.lo)+"〜"+durText(b.hi):b.lo+"〜"+b.hi+u}</span><div class="b" style="width:${Math.max(2,Math.round(b.m))}%"></div><span>${b.m.toFixed(0)}点<br><span class="small">${b.n}日</span></span></div>`).join("")+
       `</div><div class="small" style="margin-top:6px">${gz?`<b>快適帯の目安：${esc(gz.cond.replace(/の日$/,""))}</b>（平均${gz.ma.toFixed(0)}点${gz.weak?"・参考程度":""}）`:"快適帯は、まだ判断できません（帯ごとに3日以上の記録が必要です）。"}${bz?`　良くない帯：${esc(bz.cond.replace(/の日$/,""))}`:""}</div></div>`;
   });
   if(E.skip.length)h+=`<div class="card"><details><summary>スコアとの関係が小さい／判断できない要因（${E.skip.length}個）</summary><div class="small" style="margin-top:8px">${E.skip.map(x=>`${esc(x.f.name)}（${esc(x.why)}）`).join("<br>")}</div></details></div>`;
