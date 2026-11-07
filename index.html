@@ -96,8 +96,9 @@ p{margin:0 0 8px}
 .gsvg .cx{stroke:var(--sub);stroke-width:1}
 .gsvg .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .gsvg .mk{stroke:var(--sf);stroke-width:2}
-.gsvg .mr{fill:var(--sf);stroke-width:1.75}
-.gsvg .mr.c2{stroke:var(--s2)}.gsvg .mr.c3{stroke:var(--s3)}.gsvg .mr.c4{stroke:var(--s4)}
+.gsvg text.lt{fill:#fff;font-size:10.5px;font-weight:700;stroke:none}.gsvg text.lt.dk{fill:#1a1a19}
+.dot{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:700;font-style:normal;color:#fff;vertical-align:middle;margin-right:4px}
+.dot.c1{background:var(--s1)}.dot.c2{background:var(--s2)}.dot.c3{background:var(--s3)}.dot.c4{background:var(--s4);color:#1a1a19}
 .c1{stroke:var(--s1);fill:var(--s1)}.c2{stroke:var(--s2);fill:var(--s2)}.c3{stroke:var(--s3);fill:var(--s3)}.c4{stroke:var(--s4);fill:var(--s4)}
 .gsvg .ln.c1,.gsvg .ln.c2,.gsvg .ln.c3,.gsvg .ln.c4{fill:none}
 .gsvg .mk.c1,.gsvg .mk.c2,.gsvg .mk.c3,.gsvg .mk.c4{stroke:var(--sf)}
@@ -154,8 +155,8 @@ const LEVELS=[
 const level=s=>LEVELS.find(l=>s>=l.min)||LEVELS[LEVELS.length-1];
 const SLOTS=[{k:"am",n:"朝"},{k:"noon",n:"昼"},{k:"pm",n:"夕"}];
 const TARGETS=[{k:"total",n:"総合"}].concat(SLOTS);
-const SERIES=[{k:"total",n:"総合",c:"c1",shape:"circle"},{k:"am",n:"朝",c:"c2",emo:"🌅"},{k:"noon",n:"昼",c:"c3",emo:"☀️"},{k:"pm",n:"夕",c:"c4",emo:"🌇"}];
-const sLabel=s=>(s.emo?s.emo+" ":"")+s.n;
+const SERIES=[{k:"total",n:"総合",t:"総",c:"c1"},{k:"am",n:"朝",t:"朝",c:"c2"},{k:"noon",n:"昼",t:"昼",c:"c3"},{k:"pm",n:"夕",t:"夕",c:"c4"}];
+const sLabel=s=>s.n;
 const WD=["日","月","火","水","木","金","土"];
 
 /* ---------- 日付の道具 ---------- */
@@ -166,13 +167,38 @@ const md=d=>(+d.slice(5,7))+"/"+(+d.slice(8,10));
 const wd=d=>WD[new Date(dn(d)*86400000).getUTCDay()];
 const fmtDay=d=>`${+d.slice(5,7)}月${+d.slice(8,10)}日（${wd(d)}）`;
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+// 日本の祝日（振替休日・国民の休日を含む）。年末年始などの会社独自の休みは入っていないので、必要な日は後から変えてください
+const HOL_CACHE={};
+function holidaysOf(y){
+  if(HOL_CACHE[y])return HOL_CACHE[y];
+  const m={},pad=n=>String(n).padStart(2,"0"),key=(mo,d)=>`${y}-${pad(mo)}-${pad(d)}`;
+  const wk=ds=>new Date(dn(ds)*86400000).getUTCDay();
+  const fx=(mo,d,n)=>{m[key(mo,d)]=n};
+  const nthMon=(mo,n)=>{const f=new Date(Date.UTC(y,mo-1,1)).getUTCDay();return 1+((8-f)%7)+(n-1)*7};
+  const eq=(base)=>Math.floor(base+0.242194*(y-1980)-Math.floor((y-1980)/4));
+  fx(1,1,"元日");fx(1,nthMon(1,2),"成人の日");fx(2,11,"建国記念の日");if(y>=2020)fx(2,23,"天皇誕生日");
+  fx(3,eq(20.8431),"春分の日");fx(4,29,"昭和の日");fx(5,3,"憲法記念日");fx(5,4,"みどりの日");fx(5,5,"こどもの日");
+  fx(7,nthMon(7,3),"海の日");if(y>=2016)fx(8,11,"山の日");fx(9,nthMon(9,3),"敬老の日");fx(9,eq(23.2488),"秋分の日");
+  fx(10,nthMon(10,2),"スポーツの日");fx(11,3,"文化の日");fx(11,23,"勤労感謝の日");
+  Object.keys(m).sort().forEach(d=>{ // 日曜が祝日なら、次の平日が振替休日
+    if(wk(d)===0){let t=addDays(d,1);while(m[t])t=addDays(t,1);m[t]="振替休日"}
+  });
+  for(let n=dn(key(1,1));n<=dn(key(12,31));n++){ // 祝日にはさまれた平日は国民の休日
+    const d=fromDn(n);
+    if(!m[d]&&wk(d)!==0&&m[addDays(d,-1)]&&m[addDays(d,1)])m[d]="国民の休日";
+  }
+  return HOL_CACHE[y]=m;
+}
+const holidayName=d=>holidaysOf(+d.slice(0,4))[d]||"";
+const calHol=d=>isWeekend(d)||!!holidayName(d);
+const calReason=d=>holidayName(d)?`祝日（${holidayName(d)}）`:isWeekend(d)?`${wd(d)}曜日`:"平日";
 const isWeekend=d=>{const w=new Date(dn(d)*86400000).getUTCDay();return w===0||w===6};
 
 /* ---------- 状態 ---------- */
 let S={ver:4,factors:DEF(),entries:{}};
 let tab="input",mode="sc",date=today(),draft=null,delArm=null;
 let cal={y:new Date().getFullYear(),m:new Date().getMonth(),metric:"total"};
-let gr={days:30,show:{total:1,am:1,noon:1,pm:1},sel:null};
+let gr={days:30,show:{total:1,am:1,noon:1,pm:1},sel:null,split:true};
 let an={t:"total"},aiInc={};
 const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
 const clamp=x=>Math.max(0,Math.min(100,Math.round(+x||0)));
@@ -204,7 +230,7 @@ function migrate(){
   S.factors.forEach(f=>{delete f.ideal});
   // 新しい標準の要因を、一度だけ追加する（あとで削除しても、もう一度は追加しない）
   if(!Array.isArray(S.seeded))S.seeded=[];
-  [[{id:"alcQty",name:"飲酒量",type:"num",unit:"杯"},"alcohol"],[{id:"caffeine",name:"カフェイン",type:"num",unit:"杯"},"alcQty"],[{id:"ac",name:"エアコン使用",type:"bool"},"ah"]].forEach(([def,after])=>{
+  [[{id:"alcQty",name:"飲酒量",type:"num",unit:"杯"},"alcohol"],[{id:"caffeine",name:"カフェイン",type:"num",unit:"杯"},"alcQty"],[{id:"ac",name:"エアコン使用",type:"bool"},"ah"],[{id:"bed",name:"就寝時刻",type:"num",time:true,auto:"sleep"},"ac"],[{id:"wake",name:"起床時刻",type:"num",time:true,auto:"sleep"},"bed"],[{id:"sleepDur",name:"睡眠時間",type:"num",unit:"時間",auto:"sleep",computed:true},"wake"]].forEach(([def,after])=>{
     if(S.seeded.includes(def.id))return;
     S.seeded.push(def.id);
     if(S.factors.some(f=>f.id===def.id))return;
@@ -219,7 +245,7 @@ const totalOf=sc=>{const a=SLOTS.map(s=>sc&&sc[s.k]).filter(isNum);return a.leng
 const scoreOf=(e,k)=>k==="total"?totalOf(e.sc):(e.sc&&isNum(e.sc[k])?e.sc[k]:undefined);
 const hasScore=e=>totalOf(e.sc)!==undefined;
 const hasFac=e=>Object.keys(e.v||{}).length>0||!!e.noteF;
-const isEmptyEntry=e=>!hasFac(e)&&!hasScore(e)&&!e.noteS&&!isNum(e.legacy);
+const isEmptyEntry=e=>!hasFac(e)&&!hasSleep(e)&&!hasScore(e)&&!e.noteS&&!isNum(e.legacy);
 const scLabel=v=>v===undefined?"未入力":`${level(v).e} ${v}点`;
 function ent(d){return S.entries[d]||(S.entries[d]={v:{},sc:{},noteF:"",noteS:""})}
 function prune(d){const e=S.entries[d];if(e&&isEmptyEntry(e))delete S.entries[d]}
@@ -227,14 +253,28 @@ let touched=false;
 const defDate=()=>mode==="fac"?addDays(today(),1):today();
 function entryDraft(){
   const e=S.entries[date];
-  draft={v:{...(e&&e.v)},sc:{...(e&&e.sc)},noteF:(e&&e.noteF)||"",noteS:(e&&e.noteS)||""};
-  if(hasF("holiday")&&draft.v.holiday===undefined)draft.v.holiday=isWeekend(date)?1:0;
+  draft={v:{...(e&&e.v)},sc:{...(e&&e.sc)},sl:{...(e&&e.sl)},noteF:(e&&e.noteF)||"",noteS:(e&&e.noteS)||""};
+  if(hasF("holiday")&&draft.v.holiday===undefined)draft.v.holiday=calHol(date)?1:0;
   if(hasF("season")&&draft.v.season===undefined)draft.v.season=seasonOf(date);
 }
 // 要因の値を取り出す（季節・キーワードは日付や備考から自動で決まる）
+// ---- 就寝・起床の時刻（スコア入力画面で入力。分析では数値にして使う）----
+const hm=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(t||"");return m?(+m[1])+(+m[2])/60:null};
+const bedH=t=>{const h=hm(t);return h===null?null:(h<12?h+24:h)};   // 午前0〜11時の就寝は「25:00」のように24時間以降として扱う
+function sleepVal(f,e){
+  const sl=e.sl||{};
+  if(f.id==="bed")return bedH(sl.bed);
+  if(f.id==="wake")return hm(sl.wake);
+  if(f.id==="sleepDur"){const b=bedH(sl.bed),w=hm(sl.wake);if(b===null||w===null)return null;const d=Math.round((w+24-b)*60)/60;return d>0&&d<=18?d:null}
+  return null;
+}
+const clockJ=h=>{const t=Math.round(h*60),hh=Math.floor(t/60),mm=t%60;return (hh>=24?"翌"+(hh-24):hh)+":"+String(mm).padStart(2,"0")};
+const hasSleep=e=>!!(e.sl&&(e.sl.bed||e.sl.wake));
 function getVal(f,e,d){
   if(f.auto==="kw")return kwHit(noteAll(e),f.kw)?1:0;
   if(f.auto==="season")return e.v.season!==undefined?e.v.season:seasonOf(d);
+  if(f.auto==="sleep"){const v=sleepVal(f,e);return v===null?undefined:v}
+  if(f.id==="holiday"&&e.v.holiday===undefined)return calHol(d)?1:0;   // 入力がない日は、カレンダー通り
   return e.v[f.id];
 }
 
@@ -262,11 +302,12 @@ function viewFac(){
   let h=`<div class="card">${modeSeg()}<label for="dt">体調を感じる日（カレンダーの日付）</label><input type="date" id="dt" value="${date}">
   <div class="small" style="margin-top:6px">入力するのは <b>${fmtDay(addDays(date,-1))}の要因</b> です。保存すると、カレンダーの${md(date)}の体調と組にして分析します。<br>（今夜の要因なら、日付は明日にします）</div></div><div class="card">`;
   S.factors.forEach(x=>{
+    if(x.auto==="sleep")return;   // 就寝・起床は、スコア入力画面で入れます
     const v=draft.v[x.id];
     if(x.auto==="kw"){
       h+=`<label>${esc(x.name)}（備考から自動判定）</label><div class="kwv" data-kw="${x.id}">${kwHit(noteAll({noteF:draft.noteF,noteS:draft.noteS}),x.kw)?"あり":"なし"}</div>`;
     }else if(x.type==="bool"){
-      h+=`<label>${esc(x.name)}${x.id==="holiday"?`（${md(date)}の体調を感じる日が休日か）`:""}</label><div class="seg" data-b="${x.id}"><button data-v="1" class="${v===1?"on":""}">あり</button><button data-v="0" class="${v===0||v===undefined?"on":""}">なし</button></div>`;
+      h+=`<label>${esc(x.name)}${x.id==="holiday"?`（カレンダーから自動：${md(date)}は${calReason(date)}。有給などは変更できます）`:""}</label><div class="seg" data-b="${x.id}"><button data-v="1" class="${v===1?"on":""}">あり</button><button data-v="0" class="${v===0||v===undefined?"on":""}">なし</button></div>`;
     }else if(x.type==="choice"){
       const opts=(x.opts||[]).slice();if(v&&!opts.includes(v))opts.push(v);
       h+=`<label for="f_${x.id}">${esc(x.name)}${x.auto==="season"?"（日付から自動・変更もできます）":""}</label><select id="f_${x.id}" data-s="${x.id}"><option value="">未選択</option>${opts.map(o=>`<option value="${esc(o)}"${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
@@ -281,8 +322,13 @@ function viewFac(){
   if(saved)h+=`<div class="small">この日の要因は保存済みです。保存し直すと上書きされます。</div>`;
   return h;
 }
+function sdurText(sl){
+  const b=bedH((sl||{}).bed),w=hm((sl||{}).wake);
+  if(b===null||w===null)return "睡眠時間 –";
+  const d=w+24-b;return d>0&&d<=18?`睡眠 ${Math.floor(d)}時間${String(Math.round((d%1)*60)).padStart(2,"0")}分`:"睡眠時間 –";
+}
 function viewSc(){
-  const e=S.entries[date],saved=e&&(hasScore(e)||e.noteS);
+  const e=S.entries[date],saved=e&&(hasScore(e)||e.noteS||hasSleep(e));
   const t=totalOf(draft.sc);
   const pd=addDays(date,-1),pp=partsOf(S.entries[date],date),pn=(S.entries[date]||{}).noteF;
   let h=`<div class="card">${modeSeg()}<label for="dt">体調を感じた日（カレンダーの日付）</label><input type="date" id="dt" value="${date}">
@@ -293,6 +339,9 @@ function viewSc(){
     <input type="range" class="${v===undefined?"unset":""}" data-sr="${s.k}" min="0" max="100" value="${v===undefined?50:v}" aria-label="${s.n}の体調スコア">
     <div class="row" style="margin-top:6px"><input type="number" data-sn="${s.k}" inputmode="numeric" min="0" max="100" placeholder="未入力" value="${v===undefined?"":v}" aria-label="${s.n}の点数"><button class="sm" data-sx="${s.k}">クリア</button></div></div>`}).join("");
   h+=`<div class="total hd"><b>総合（自動）</b><span id="tot">${t===undefined?"–":level(t).e+" "+t+"点"}</span></div>
+  <div class="srow" style="margin-top:12px"><div class="hd"><b>睡眠の時刻（任意）</b><span id="sdur">${sdurText(draft.sl)}</span></div>
+  <div class="small">就寝は前の晩、起床は今朝の時刻です。分析に使います。</div>
+  <div class="row" style="margin-top:6px;align-items:flex-end"><div style="flex:1"><label for="sl_bed">就寝</label><input type="time" id="sl_bed" data-sl="bed" value="${esc((draft.sl||{}).bed||"")}"></div><div style="flex:1"><label for="sl_wake">起床</label><input type="time" id="sl_wake" data-sl="wake" value="${esc((draft.sl||{}).wake||"")}"></div></div></div>
   <label for="noteS">その日の備考（出来事・気づいたこと）</label><textarea id="noteS" placeholder="例：昼に頭痛があった／夕方は眠くてだるかった">${esc(draft.noteS)}</textarea>
   <button class="btn" id="save">スコアを保存</button>
   <button class="btn danger${delArm==="sc:"+date?" arm":""}" id="clr">${saved?(delArm==="sc:"+date?"本当にこの日のスコアを削除する":"この日のスコアを削除"):"スコアの入力をリセット"}</button></div>`;
@@ -362,16 +411,17 @@ function bindSc(){
   document.querySelectorAll("[data-sn]").forEach(n=>n.oninput=()=>{const k=n.dataset.sn;if(n.value==="")delete draft.sc[k];else draft.sc[k]=clamp(n.value);upd(k,"n")});
   document.querySelectorAll("[data-sx]").forEach(b=>b.onclick=()=>{const k=b.dataset.sx;delete draft.sc[k];upd(k)});
   $("#noteS").oninput=e=>{draft.noteS=e.target.value};
+  document.querySelectorAll("[data-sl]").forEach(i=>{const f=()=>{if(!draft.sl)draft.sl={};if(i.value)draft.sl[i.dataset.sl]=i.value;else delete draft.sl[i.dataset.sl];$("#sdur").textContent=sdurText(draft.sl)};i.oninput=f;i.onchange=f});
   $("#save").onclick=()=>{
-    const e=ent(date);e.sc={};SLOTS.forEach(s=>{if(isNum(draft.sc[s.k]))e.sc[s.k]=draft.sc[s.k]});
+    const e=ent(date);e.sl={};["bed","wake"].forEach(k=>{if(draft.sl&&draft.sl[k])e.sl[k]=draft.sl[k]});e.sc={};SLOTS.forEach(s=>{if(isNum(draft.sc[s.k]))e.sc[s.k]=draft.sc[s.k]});
     e.noteS=draft.noteS.trim();delArm=null;prune(date);
     if(persist()){toast("スコアを保存しました");entryDraft();render()}
   };
   $("#clr").onclick=()=>{
     const e=S.entries[date];
-    if(!(e&&(hasScore(e)||e.noteS))){delArm=null;entryDraft();toast("入力をリセットしました");render();return}
+    if(!(e&&(hasScore(e)||e.noteS||hasSleep(e)))){delArm=null;entryDraft();toast("入力をリセットしました");render();return}
     if(delArm!=="sc:"+date){delArm="sc:"+date;render();return}
-    e.sc={};e.noteS="";delArm=null;prune(date);persist();entryDraft();toast("この日のスコアを削除しました");render();
+    e.sc={};e.sl={};e.noteS="";delArm=null;prune(date);persist();entryDraft();toast("この日のスコアを削除しました");render();
   };
 }
 
@@ -404,23 +454,27 @@ function bindCalendar(){
 }
 
 /* ---------- グラフ ---------- */
-const GW=360,GH=236,PL=30,PR=12,PT=12,PB=28;
+const GW=360,PL=30,PR=12,PT=12,PB=28,GI=11;   // GI＝左右の余白（端の印が軸の数字に重ならないように）
+const gx=(g,d)=>PL+GI+(GW-PL-PR-2*GI)*(dn(d)-dn(g.start))/Math.max(1,dn(g.end)-dn(g.start));
 function mkShape(shape,x,y,cls,extra){
-  x=+x;y=+y; // 文字として渡されても、足し算が文字の連結にならないようにする
-  const c=`class="mk ${cls}"${extra||""}`;
-  if(shape==="circle")return `<circle ${c} cx="${x}" cy="${y}" r="4"/>`;
-  if(shape==="square")return `<rect ${c} x="${x-4}" y="${y-4}" width="8" height="8" rx="1"/>`;
-  if(shape==="tri")return `<polygon ${c} points="${x},${y-5} ${x+5},${y+4} ${x-5},${y+4}"/>`;
-  return `<polygon ${c} points="${x},${y-5.5} ${x+5.5},${y} ${x},${y+5.5} ${x-5.5},${y}"/>`;
+  x=+x;y=+y;
+  return `<circle class="mk ${cls}"${extra||""} cx="${x}" cy="${y}" r="4"/>`;
 }
-// 朝・昼・夕は絵文字、総合は丸。日数が多いときは小さく／省略する
+// 朝・昼・夕・総合は、色つきの丸に文字（朝／昼／夕／総）を入れた印にする。日数が多いときは文字なしの小さな丸にする
 function mkMark(s,x,y,tier){
   x=+x;y=+y;
-  if(!s.emo)return mkShape(s.shape,x,y,s.c);
-  const em=`<text class="em" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" style="font-size:${tier>=2?11.5:10}px">${s.emo}</text>`;
-  return tier>=2?`<circle class="mr ${s.c}" cx="${x}" cy="${y}" r="9"/>`+em:em;
+  if(tier>=2)return `<circle class="mk ${s.c}" cx="${x}" cy="${y}" r="9"/><text class="lt${s.c==="c4"?" dk":""}" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central">${s.t}</text>`;
+  return `<circle class="mk ${s.c}" cx="${x}" cy="${y}" r="${tier===1?5:6}"/>`;
 }
-const gTier=g=>{const sp=(GW-PL-PR)/Math.max(1,dn(g.end)-dn(g.start));return sp>=20?2:sp>=9?1:0};
+const gTier=g=>{const sp=(GW-PL-PR-2*GI)/Math.max(1,dn(g.end)-dn(g.start));return sp>=20?2:sp>=9?1:0};
+// 「重ねる」は1枚に全部、「分ける」は総合・朝・昼・夕を別々の小さなグラフにして縦に並べる
+function graphLayout(){
+  const vis=SERIES.filter(s=>gr.show[s.k]);
+  if(!gr.split||vis.length<2)return {split:false,panels:[{series:vis,top:PT,h:190}],H:PT+190+PB};
+  let y=PT;
+  const panels=vis.map(s=>{const h=s.k==="total"?104:76,p={series:[s],top:y+18,h};y+=18+h+8;return p});
+  return {split:true,panels,H:y-8+PB};
+}
 function graphData(){
   const all=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])).sort();
   if(!all.length)return null;
@@ -430,43 +484,49 @@ function graphData(){
   return {all,ds,start:gr.days===0?all[0]:start,end};
 }
 function graphSvg(g){
-  const {ds,start,end}=g,s0=dn(start),span=Math.max(1,dn(end)-s0),pw=GW-PL-PR,ph=GH-PT-PB;
-  const X=d=>PL+pw*(dn(d)-s0)/span,Y=v=>PT+ph*(1-v/100);
-  let o=`<svg class="gsvg" id="gsvg" viewBox="0 0 ${GW} ${GH}" role="img" aria-label="体調スコアの推移の折れ線グラフ。${md(start)}から${md(end)}。詳しい値は下の表で確認できます。">`;
-  for(let v=0;v<=100;v+=20)o+=`<line class="${v===0?"ax":"gl"}" x1="${PL}" x2="${GW-PR}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${PL-5}" y="${Y(v)+3}" text-anchor="end">${v}</text>`;
-  const nt=Math.min(5,span+1);
-  for(let i=0;i<nt;i++){const n=Math.round(s0+span*(nt===1?0:i/(nt-1))),d=fromDn(n);o+=`<text x="${X(d)}" y="${GH-9}" text-anchor="${i===0?"start":i===nt-1?"end":"middle"}">${md(d)}</text>`}
-  const sx=gr.sel&&ds.includes(gr.sel)?X(gr.sel):-10;
-  o+=`<line class="cx" id="gcx" x1="${sx}" x2="${sx}" y1="${PT}" y2="${PT+ph}"/>`;
-  const tier=gTier(g);
-  SERIES.forEach(s=>{
-    if(!gr.show[s.k])return;
-    const pts=ds.map(d=>{const v=scoreOf(S.entries[d],s.k);return v===undefined?null:{d,v,x:X(d),y:Y(v)}}).filter(Boolean);
-    let path="",prev=null;
-    pts.forEach(p=>{path+=(prev&&dn(p.d)-dn(prev.d)<=7?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)+" ";prev=p});
-    if(pts.length>1)o+=`<path class="ln ${s.c}" d="${path}"/>`;
-    if(tier>0||!s.emo)pts.forEach(p=>{if(tier>0||p===pts[pts.length-1])o+=mkMark(s,p.x.toFixed(1),p.y.toFixed(1),tier)});
+  const {ds,start,end}=g,s0=dn(start),span=Math.max(1,dn(end)-s0),pw=GW-PL-PR,lay=g.lay=graphLayout(),H=lay.H;
+  const X=d=>gx(g,d);
+  let o=`<svg class="gsvg" id="gsvg" viewBox="0 0 ${GW} ${H}" role="img" aria-label="体調スコアの推移の折れ線グラフ。${md(start)}から${md(end)}。詳しい値は下の表で確認できます。">`;
+  const tier=gTier(g),lastP=lay.panels[lay.panels.length-1];
+  lay.panels.forEach(pn=>{
+    const Y=v=>pn.top+pn.h*(1-v/100),steps=lay.split?[0,50,100]:[0,20,40,60,80,100];
+    if(lay.split){const s=pn.series[0];o+=`<circle class="mk ${s.c}" cx="${PL+8}" cy="${pn.top-9}" r="7"/><text class="lt${s.c==="c4"?" dk":""}" x="${PL+8}" y="${pn.top-9}" text-anchor="middle" dominant-baseline="central">${s.t}</text><text x="${PL+20}" y="${pn.top-9}" dominant-baseline="central" style="fill:var(--ink);font-weight:600">${s.n}</text>`}
+    steps.forEach(v=>{o+=`<line class="${v===0?"ax":"gl"}" x1="${PL}" x2="${GW-PR}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${PL-5}" y="${Y(v)+3}" text-anchor="end">${v}</text>`});
   });
-  o+=`<g id="gsel"></g><rect id="ghit" x="${PL}" y="0" width="${pw}" height="${GH}" fill="transparent"/></svg>`;
+  const nt=Math.min(5,span+1);
+  for(let i=0;i<nt;i++){const n=Math.round(s0+span*(nt===1?0:i/(nt-1))),d=fromDn(n);o+=`<text x="${X(d)}" y="${H-9}" text-anchor="${i===0?"start":i===nt-1?"end":"middle"}">${md(d)}</text>`}
+  const sx=gr.sel&&ds.includes(gr.sel)?X(gr.sel):-10;
+  o+=`<line class="cx" id="gcx" x1="${sx}" x2="${sx}" y1="${PT}" y2="${lastP.top+lastP.h}"/>`;
+  lay.panels.forEach(pn=>{
+    const Y=v=>pn.top+pn.h*(1-v/100);
+    pn.series.forEach(s=>{
+      const pts=ds.map(d=>{const v=scoreOf(S.entries[d],s.k);return v===undefined?null:{d,v,x:X(d),y:Y(v)}}).filter(Boolean);
+      let path="",prev=null;
+      pts.forEach(p=>{path+=(prev&&dn(p.d)-dn(prev.d)<=7?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)+" ";prev=p});
+      if(pts.length>1)o+=`<path class="ln ${s.c}" d="${path}"/>`;
+      pts.forEach(p=>{if(tier>0||p===pts[pts.length-1])o+=mkMark(s,p.x.toFixed(1),p.y.toFixed(1),tier)});
+    });
+  });
+  o+=`<g id="gsel"></g><rect id="ghit" x="${PL}" y="0" width="${pw}" height="${H}" fill="transparent"/></svg>`;
   return o;
 }
 function graphReadout(g){
   const d=gr.sel&&g.ds.includes(gr.sel)?gr.sel:null;
   if(!d)return `<div class="small">グラフをタップすると、その日の値が表示されます。</div>`;
   const e=S.entries[d];
-  const vals=SERIES.filter(s=>gr.show[s.k]).map(s=>{const v=scoreOf(e,s.k);return `<span><i class="key ${s.c}"></i> ${sLabel(s)} <b>${v===undefined?"–":v}</b></span>`}).join("");
+  const vals=SERIES.filter(s=>gr.show[s.k]).map(s=>{const v=scoreOf(e,s.k);return `<span><i class="dot ${s.c}">${s.t}</i> <b>${v===undefined?"–":v}</b></span>`}).join("");
   const i=g.ds.indexOf(d);
   return `<div class="hd"><b>${fmtDay(d)}</b><span class="row"><button class="sm" id="gprev" aria-label="前の記録日"${i<=0?" disabled":""}>◀</button><button class="sm" id="gnext" aria-label="次の記録日"${i>=g.ds.length-1?" disabled":""}>▶</button></span></div><div class="vals">${vals}</div>`;
 }
 // 選んだ日だけを更新する（グラフ本体は描き直さないので、指でなぞっても途切れない）
 function setSel(g,d){
   gr.sel=d;
-  const s0=dn(g.start),span=Math.max(1,dn(g.end)-s0),x=PL+(GW-PL-PR)*(dn(d)-s0)/span,cx=$("#gcx");
+  const s0=dn(g.start),span=Math.max(1,dn(g.end)-s0),x=gx(g,d),cx=$("#gcx");
   if(cx){cx.setAttribute("x1",x);cx.setAttribute("x2",x)}
   const gs=$("#gsel");
   if(gs){ // 件数が多くて印を省いたときだけ、選んだ日の印を出す
     let o="";const tier=gTier(g);
-    if(tier===0)SERIES.forEach(s=>{if(!gr.show[s.k])return;const v=scoreOf(S.entries[d],s.k);if(v!==undefined)o+=mkMark(s,x.toFixed(1),(PT+(GH-PT-PB)*(1-v/100)).toFixed(1),2)});
+    if(tier===0&&g.lay)g.lay.panels.forEach(pn=>pn.series.forEach(s=>{const v=scoreOf(S.entries[d],s.k);if(v!==undefined)o+=mkMark(s,x.toFixed(1),(pn.top+pn.h*(1-v/100)).toFixed(1),2)}));
     gs.innerHTML=o;
   }
   $("#grd").innerHTML=graphReadout(g);
@@ -484,7 +544,7 @@ function drawGraph(){
     if(!g.ds.length)return;
     const r=svg.getBoundingClientRect(),px=(ev.clientX-r.left)/r.width*GW,s0=dn(g.start),span=Math.max(1,dn(g.end)-s0);
     let best=g.ds[0],bd=1e9;
-    g.ds.forEach(d=>{const x=PL+(GW-PL-PR)*(dn(d)-s0)/span,dd=Math.abs(x-px);if(dd<bd){bd=dd;best=d}});
+    g.ds.forEach(d=>{const x=gx(g,d),dd=Math.abs(x-px);if(dd<bd){bd=dd;best=d}});
     if(best!==gr.sel)setSel(g,best);
   };
   hit.addEventListener("pointerdown",pick);
@@ -496,13 +556,15 @@ function viewGraph(){
   const ranges=[[14,"14日"],[30,"30日"],[90,"90日"],[0,"すべて"]];
   const rows=g.ds.slice().reverse().slice(0,62).map(d=>{const e=S.entries[d];return `<tr><td>${md(d)}（${wd(d)}）</td>${SERIES.map(s=>`<td>${scoreOf(e,s.k)??"–"}</td>`).join("")}</tr>`}).join("");
   return `<div class="card"><div class="chips" role="group" aria-label="期間">${ranges.map(([n,l])=>`<button class="chip${gr.days===n?" on":""}" data-gd="${n}">${l}</button>`).join("")}</div>
-  <div class="chips" role="group" aria-label="表示する線">${SERIES.map(s=>`<button class="chip${gr.show[s.k]?"":" off"}" data-gs="${s.k}" aria-pressed="${gr.show[s.k]?"true":"false"}"><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line x1="0" x2="22" y1="6" y2="6" class="ln ${s.c}" style="stroke-width:2"/>${s.emo?`<text class="em" x="11" y="6" text-anchor="middle" dominant-baseline="central" style="font-size:10px">${s.emo}</text>`:mkShape(s.shape,11,6,s.c)}</svg>${s.n}</button>`).join("")}</div>
+  <div class="chips" role="group" aria-label="表示する線">${SERIES.map(s=>`<button class="chip${gr.show[s.k]?"":" off"}" data-gs="${s.k}" aria-pressed="${gr.show[s.k]?"true":"false"}"><i class="dot ${s.c}">${s.t}</i>${s.n}</button>`).join("")}</div>
+  <div class="chips" role="group" aria-label="グラフの並べ方"><button class="chip${gr.split?" on":""}" data-gm="1">分けて表示</button><button class="chip${gr.split?"":" on"}" data-gm="0">重ねて表示</button></div>
   <div id="gbox"></div><div class="rd" id="grd"></div>
-  <details><summary>表で見る</summary><table><thead><tr><th>日付</th>${SERIES.map(s=>`<th>${sLabel(s)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></details></div>
+  <details><summary>表で見る</summary><table><thead><tr><th>日付</th>${SERIES.map(s=>`<th>${s.n}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></details></div>
   <div class="small">点が離れた日（7日以上の間隔）は、線をつなぎません。総合は、入力された朝・昼・夕の平均です。</div>`;
 }
 function bindGraph(){
   document.querySelectorAll("[data-gd]").forEach(b=>b.onclick=()=>{gr.days=+b.dataset.gd;gr.sel=null;render()});
+  document.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{gr.split=b.dataset.gm==="1";render()});
   document.querySelectorAll("[data-gs]").forEach(b=>b.onclick=()=>{const k=b.dataset.gs,on=Object.values(gr.show).filter(Boolean).length;if(gr.show[k]&&on===1){toast("1本は表示したままにします");return}gr.show[k]=gr.show[k]?0:1;render()});
   drawGraph();
 }
@@ -514,10 +576,10 @@ function pearson(x,y){
   return sxx&&syy?sxy/Math.sqrt(sxx*syy):null;
 }
 /* ---------- 分析：どんな条件のときに、スコアが上がる／下がるか ---------- */
-const BANDS={tempIn:2,tempOut:3,rhIn:10,ah:2};   // 「ちょうど良い帯」を探す要因と、帯の幅
+const BANDS={tempIn:2,tempOut:3,rhIn:10,ah:2,sleepDur:1};   // 「ちょうど良い帯」を探す要因と、帯の幅
 const MINN=3,MINDIFF=5;                          // 条件ごとの最低日数／関係ありとみなす平均点の差
 const fmtN=v=>(Math.round(v*100)/100).toLocaleString("ja-JP");
-const niceStep=f=>({steps:500,tempIn:1,tempOut:1,rhIn:5,ah:1})[f.id]||null;
+const niceStep=f=>({steps:500,tempIn:1,tempOut:1,rhIn:5,ah:1,bed:0.5,wake:0.5,sleepDur:0.5})[f.id]||null;
 const varOf=a=>{if(a.length<2)return 0;const m=mean(a);return a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1)};
 function cmp(a,b){ // a＝条件に当てはまる日の点数、b＝それ以外の日の点数
   const na=a.length,nb=b.length,ma=mean(a),mb=mean(b),diff=ma-mb,se=Math.sqrt(varOf(a)/na+varOf(b)/nb);
@@ -526,7 +588,7 @@ function cmp(a,b){ // a＝条件に当てはまる日の点数、b＝それ以�
 }
 function levelsText(rows,f){ // 杯数のような少ない整数は、値ごとの平均点も並べる
   const vals=rows.map(r=>r.v);
-  if(f.type!=="num"||!vals.every(v=>isNum(v)&&Number.isInteger(v)))return "";
+  if(f.type!=="num"||f.time||!vals.every(v=>isNum(v)&&Number.isInteger(v)))return "";
   const dist=[...new Set(vals)].sort((a,b)=>a-b);
   if(dist.length<3||dist.length>10)return "";
   const cap=dist.length>7?dist[6]:null,u=f.unit||"",g={};
@@ -561,7 +623,7 @@ function effects(k){
       let cuts;
       if(dist.every(Number.isInteger)&&dist.length<=10)cuts=dist.slice(1);
       else{cuts=[];for(let i=1;i<dist.length;i++){const m=(dist[i-1]+dist[i])/2;cuts.push(step?Math.round(m/step)*step:+m.toPrecision(2))}cuts=[...new Set(cuts)]}
-      cuts.forEach(c=>mk(r=>r.v>=c,`${fmtN(c)}${u}以上の日`,"それ未満の日"));
+      cuts.forEach(c=>mk(r=>r.v>=c,f.time?`${clockJ(c)}以降の日`:`${fmtN(c)}${u}以上の日`,f.time?`${clockJ(c)}より前の日`:"それ未満の日"));
     }
     if(!cands.length){skip.push({f,why:"条件ごとの日数が足りず、判断できません"});return}
     // 境目をたくさん試すほど、偶然で差が大きく見えやすくなるため、試した数に応じて「参考程度」の基準を厳しくする
@@ -616,7 +678,7 @@ function buildSummary(){
 function aiPrompt(){
   const inc=S.factors.filter(f=>aiInc[f.id]!==false),sum=buildSummary();
   const ds=Object.keys(S.entries).filter(d=>hasScore(S.entries[d])||hasFac(S.entries[d])).sort().slice(-60);
-  const fv=(f,e,d)=>{const v=getVal(f,e,d);if(v===undefined||v==="")return "";return f.type==="bool"?(v?"あり":"なし"):v+(f.unit||"")};
+  const fv=(f,e,d)=>{const v=getVal(f,e,d);if(v===undefined||v==="")return "";return f.type==="bool"?(v?"あり":"なし"):f.time?clockJ(v):(f.id==="sleepDur"?Math.round(v*10)/10:v)+(f.unit||"")};
   const lines=ds.map(d=>{const e=S.entries[d],t=scoreOf(e,"total");
     return [d,...SLOTS.map(s=>scoreOf(e,s.k)??"-"),t??"-",...inc.map(f=>fv(f,e,d)||"-"),(e.noteF||"").replace(/\s+/g," ").slice(0,80),(e.noteS||"").replace(/\s+/g," ").slice(0,80)].join(" | ")}).join("\n");
   return `あなたは、生活習慣と体調の関係を一緒に考えるアシスタントです。以下は、私が毎日記録している「朝・昼・夕の体調スコア（0〜100点、高いほど良い）」と、体調に影響しそうな「要因」のデータです。
@@ -691,11 +753,11 @@ function viewAnalysis(){
   h+=`<div class="card"><h3>👍 ${label}スコアを良くする要因</h3><div class="small">効きが大きい順です。</div>${E.good.length?E.good.map((c,i)=>card(c,i,"pos")).join(""):`<div class="small" style="margin-top:8px">まだ見つかっていません。</div>`}</div>`;
   h+=`<div class="card"><h3>👎 ${label}スコアを悪くする要因</h3><div class="small">効きが大きい順です。</div>${E.bad.length?E.bad.map((c,i)=>card(c,i,"neg")).join(""):`<div class="small" style="margin-top:8px">まだ見つかっていません。</div>`}</div>`;
   // 帯ごとの平均点（室温・室内湿度）
-  S.factors.filter(f=>f.id==="tempIn"||f.id==="rhIn").forEach(f=>{
+  S.factors.filter(f=>f.id==="tempIn"||f.id==="rhIn"||f.id==="sleepDur").forEach(f=>{
     const bs=bandStats(an.t,f);if(!bs.length)return;
     const gz=E.good.find(c=>c.f.id===f.id&&c.cond.includes("〜")),bz=E.bad.find(c=>c.f.id===f.id&&c.cond.includes("〜")),u=f.unit||"";
     const inZ=(b,c)=>{if(!c)return false;const m=c.cond.match(/^(-?[\d.]+)〜(-?[\d.]+)/);return m&&b.lo>=+m[1]&&b.hi<=+m[2]};
-    h+=`<div class="card"><h3>${f.id==="tempIn"?"🌡":"💧"} ${esc(f.name)}の帯ごとの平均点</h3><div class="small">あなたにとって快適な${f.id==="tempIn"?"温度":"湿度"}を探します。</div><div style="margin-top:8px">`+
+    h+=`<div class="card"><h3>${f.id==="tempIn"?"🌡":f.id==="rhIn"?"💧":"😴"} ${esc(f.name)}の帯ごとの平均点</h3><div class="small">あなたにとって快適な${f.id==="tempIn"?"温度":f.id==="rhIn"?"湿度":"睡眠時間"}を探します。</div><div style="margin-top:8px">`+
       bs.map(b=>`<div class="band ${inZ(b,gz)?"best":inZ(b,bz)?"bad":""}"><span>${b.lo}〜${b.hi}${u}</span><div class="b" style="width:${Math.max(2,Math.round(b.m))}%"></div><span>${b.m.toFixed(0)}点<br><span class="small">${b.n}日</span></span></div>`).join("")+
       `</div><div class="small" style="margin-top:6px">${gz?`<b>快適帯の目安：${esc(gz.cond.replace(/の日$/,""))}</b>（平均${gz.ma.toFixed(0)}点${gz.weak?"・参考程度":""}）`:"快適帯は、まだ判断できません（帯ごとに3日以上の記録が必要です）。"}${bz?`　良くない帯：${esc(bz.cond.replace(/の日$/,""))}`:""}</div></div>`;
   });
@@ -725,10 +787,11 @@ function viewHistory(){
     ${t!==undefined?`<div class="small">${sc}</div>`:""}
     ${isNum(e.legacy)?`<div class="small">旧「睡眠スコア」：${e.legacy}点（旧形式の記録）</div>`:""}
     ${parts?`<div class="small" style="margin-top:4px">前日の要因：${parts}</div>`:""}
-    ${e.noteF?`<div class="note">📝 前日の備考：${esc(e.noteF)}</div>`:""}${e.noteS?`<div class="note">📝 その日の備考：${esc(e.noteS)}</div>`:""}
+    ${hasSleep(e)?`<div class="small" style="margin-top:4px">睡眠：就寝 ${esc((e.sl||{}).bed||"–")}／起床 ${esc((e.sl||{}).wake||"–")}（${esc(sdurText(e.sl).replace("睡眠時間 –","–").replace("睡眠 ",""))}）</div>`:""}${e.noteF?`<div class="note">📝 前日の備考：${esc(e.noteF)}</div>`:""}${e.noteS?`<div class="note">📝 その日の備考：${esc(e.noteS)}</div>`:""}
     <div class="row" style="margin-top:8px"><button class="sm" data-editf="${k}">要因を編集</button><button class="sm" data-edits="${k}">スコアを編集</button><button class="sm" data-del="${k}">${delArm===k?"本当に削除":"この日を削除"}</button></div></div>`}).join("");
 }
 function factorDesc(f){
+  if(f.auto==="sleep")return f.computed?"就寝と起床から自動計算":"時刻（スコア入力画面で入力）";
   if(f.auto==="kw")return "備考のキーワード："+esc((f.kw||[]).join("、"));
   if(f.auto==="season")return "選択式・日付から自動";
   if(f.type==="choice")return "選択式："+esc((f.opts||[]).join("／"));
