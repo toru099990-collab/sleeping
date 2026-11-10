@@ -230,7 +230,7 @@ function migrate(){
   S.factors.forEach(f=>{delete f.ideal});
   // 新しい標準の要因を、一度だけ追加する（あとで削除しても、もう一度は追加しない）
   if(!Array.isArray(S.seeded))S.seeded=[];
-  [[{id:"alcQty",name:"飲酒量",type:"num",unit:"杯"},"alcohol"],[{id:"caffeine",name:"カフェイン",type:"num",unit:"杯"},"alcQty"],[{id:"ac",name:"エアコン使用",type:"bool"},"ah"],[{id:"bed",name:"就寝時刻",type:"num",time:true,auto:"sleep"},"ac"],[{id:"wake",name:"起床時刻",type:"num",time:true,auto:"sleep"},"bed"],[{id:"sleepDur",name:"睡眠時間",type:"num",unit:"時間",auto:"sleep",computed:true},"wake"]].forEach(([def,after])=>{
+  [[{id:"weekday",name:"曜日",type:"choice",opts:["月","火","水","木","金","土","日"],auto:"weekday"},"season"],[{id:"alcQty",name:"飲酒量",type:"num",unit:"杯"},"alcohol"],[{id:"caffeine",name:"カフェイン",type:"num",unit:"杯"},"alcQty"],[{id:"ac",name:"エアコン使用",type:"bool"},"ah"],[{id:"bed",name:"就寝時刻",type:"num",time:true,auto:"sleep"},"ac"],[{id:"wake",name:"起床時刻",type:"num",time:true,auto:"sleep"},"bed"],[{id:"sleepDur",name:"睡眠時間",type:"num",unit:"時間",auto:"sleep",computed:true},"wake"]].forEach(([def,after])=>{
     if(S.seeded.includes(def.id))return;
     S.seeded.push(def.id);
     if(S.factors.some(f=>f.id===def.id))return;
@@ -273,6 +273,7 @@ const hasSleep=e=>!!(e.sl&&(e.sl.bed||e.sl.wake));
 function getVal(f,e,d){
   if(f.auto==="kw")return kwHit(noteAll(e),f.kw)?1:0;
   if(f.auto==="season")return e.v.season!==undefined?e.v.season:seasonOf(d);
+  if(f.auto==="weekday")return wd(d);   // 体調を感じた日（スコアの日）の曜日
   if(f.auto==="sleep"){const v=sleepVal(f,e);return v===null?undefined:v}
   if(f.id==="holiday"&&e.v.holiday===undefined)return calHol(d)?1:0;   // 入力がない日は、カレンダー通り
   return e.v[f.id];
@@ -303,6 +304,7 @@ function viewFac(){
   <div class="small" style="margin-top:6px">入力するのは <b>${fmtDay(addDays(date,-1))}の要因</b> です。保存すると、カレンダーの${md(date)}の体調と組にして分析します。<br>（今夜の要因なら、日付は明日にします）</div></div><div class="card">`;
   S.factors.forEach(x=>{
     if(x.auto==="sleep")return;   // 就寝・起床は、スコア入力画面で入れます
+    if(x.auto==="weekday"){h+=`<label>曜日（日付から自動）</label><div class="kwv">${wd(date)}曜日</div>`;return}
     const v=draft.v[x.id];
     if(x.auto==="kw"){
       h+=`<label>${esc(x.name)}（備考から自動判定）</label><div class="kwv" data-kw="${x.id}">${kwHit(noteAll({noteF:draft.noteF,noteS:draft.noteS}),x.kw)?"あり":"なし"}</div>`;
@@ -619,7 +621,7 @@ function effects(k){
       cands.push({f,cond,rest,...cmp(a,b),...extra});
     };
     if(f.type==="choice"){
-      [...new Set(rows.map(r=>r.v))].forEach(o=>mk(r=>r.v===o,`${o}の日`,"それ以外の日"));
+      [...new Set(rows.map(r=>r.v))].forEach(o=>mk(r=>r.v===o,f.auto==="weekday"?`${o}曜日`:`${o}の日`,f.auto==="weekday"?"それ以外の曜日":"それ以外の日",f.auto==="weekday"?{wday:o}:{}));
     }else if(f.type==="bool"||f.auto==="kw"){
       mk(r=>!!r.v,"ありの日","なしの日");
     }else if(BANDS[f.id]){
@@ -640,7 +642,7 @@ function effects(k){
     const levels=levelsText(rows,f);
     const pick=arr=>arr.reduce((a,b)=>Math.abs(b.diff)>Math.abs(a.diff)?b:a);
     let added=false,biggest=pick(cands);
-    if(BANDS[f.id]){ // ちょうど良い帯（プラス）と、良くない帯（マイナス）を別々に探す
+    if(BANDS[f.id]||f.type==="choice"){ // ちょうど良い帯／高めの選択肢（プラス）と、低めの選択肢（マイナス）（プラス）と、良くない帯（マイナス）を別々に探す
       const pos=cands.filter(c=>c.diff>=MINDIFF),neg=cands.filter(c=>c.diff<=-MINDIFF);
       if(pos.length){good.push({...pick(pos),levels});added=true}
       if(neg.length){bad.push({...pick(neg),levels});added=true}
@@ -782,6 +784,17 @@ function viewAnalysis(){
   if(AV.length)h+=`<div class="card"><h3>🔎 良い日と悪い日の実際の値</h3><div class="small">${label}スコアが高かった日（上位3分の1）と低かった日（下位3分の1）で、各要因の平均を比べます。値の違いが大きい順です。</div>`+
     AV.map(a=>`<div class="rk"><div style="flex:1"><div class="hd"><b>${esc(a.f.name)}</b>${a.weak?`<span class="rel">参考程度</span>`:""}</div>
       <div class="cond">👍 良かった日：<b>${esc(fmtVal(a.f,a.mt))}</b> <span class="small">（平均${a.mtY.toFixed(0)}点・${a.n}日）</span><br>👎 悪かった日：<b>${esc(fmtVal(a.f,a.mb))}</b> <span class="small">（平均${a.mbY.toFixed(0)}点・${a.n}日）</span></div></div></div>`).join("")+`</div>`;
+  // 曜日ごとの平均点
+  if(S.factors.some(f=>f.auto==="weekday")){
+    const g={};Object.keys(S.entries).forEach(d=>{const y=scoreOf(S.entries[d],an.t);if(y!==undefined)(g[wd(d)]=g[wd(d)]||[]).push(y)});
+    const days=["月","火","水","木","金","土","日"].filter(w=>g[w]);
+    if(days.length){
+      const gw=E.good.find(c=>c.f.auto==="weekday"),bw=E.bad.find(c=>c.f.auto==="weekday");
+      h+=`<div class="card"><h3>📅 曜日ごとの平均点</h3><div class="small">体調を感じた日の曜日です（祝日は、その曜日のまま数えます）。休日かどうかは、「休日」の要因で別に分析します。</div><div style="margin-top:8px">`+
+        days.map(w=>`<div class="band ${gw&&gw.wday===w?"best":bw&&bw.wday===w?"bad":""}" style="grid-template-columns:40px 1fr 44px"><span>${w}曜</span><div class="b" style="width:${Math.max(2,Math.round(mean(g[w])))}%"></div><span>${mean(g[w]).toFixed(0)}点<br><span class="small">${g[w].length}日</span></span></div>`).join("")+
+        `</div><div class="small" style="margin-top:6px">${gw?`<b>高めの曜日：${esc(gw.cond)}</b>（平均${gw.ma.toFixed(0)}点${gw.weak?"・参考程度":""}）`:"高めの曜日は、まだ判断できません（曜日ごとに3日以上の記録が必要です）。"}${bw?`　低めの曜日：${esc(bw.cond)}（平均${bw.ma.toFixed(0)}点${bw.weak?"・参考程度":""}）`:""}</div></div>`;
+    }
+  }
   // 帯ごとの平均点（室温・室内湿度）
   S.factors.filter(f=>f.id==="tempIn"||f.id==="rhIn"||f.id==="sleepDur").forEach(f=>{
     const bs=bandStats(an.t,f);if(!bs.length)return;
@@ -824,6 +837,7 @@ function factorDesc(f){
   if(f.auto==="sleep")return f.computed?"就寝と起床から自動計算":"時刻（スコア入力画面で入力）";
   if(f.auto==="kw")return "備考のキーワード："+esc((f.kw||[]).join("、"));
   if(f.auto==="season")return "選択式・日付から自動";
+  if(f.auto==="weekday")return "日付から自動（月〜日）";
   if(f.type==="choice")return "選択式："+esc((f.opts||[]).join("／"));
   if(f.type==="bool")return "あり／なし";
   return "数値"+(f.unit?"（"+esc(f.unit)+"）":"")+(f.computed?" ・自動計算":"");
